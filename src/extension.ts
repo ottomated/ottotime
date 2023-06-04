@@ -70,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	let API_KEY = context.globalState.get<string>('ottotime.apikey')!;
 	const API_URL = context.globalState.get(
 		'ottotime.apiUrl',
-		'http://localhost:8787'
+		'https://ottotime.mogul-moves.workers.dev'
 	);
 
 	if (!API_KEY) {
