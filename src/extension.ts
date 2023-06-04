@@ -33,11 +33,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 	context.subscriptions.push(
 		vscode.commands.registerCommand('ottotime.setApiUrl', async () => {
-			const value = await vscode.window.showInputBox({
+			let value = await vscode.window.showInputBox({
 				prompt: 'Enter your Ottotime API Url',
 				value: context.globalState.get('ottotime.apiUrl'),
 			});
 			if (!value) return;
+			if (value.endsWith('/')) {
+				value = value.slice(0, -1);
+			}
 			context.globalState.update('ottotime.apiUrl', value);
 			vscode.commands.executeCommand('workbench.action.reloadWindow');
 		})
