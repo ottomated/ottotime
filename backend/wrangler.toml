@@ -1,0 +1,8 @@
+name = "backend"
+main = "src/worker.ts"
+compatibility_date = "2023-06-04"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ottotime"
+database_id = "823b224d-5502-437d-98ed-733efbec1de7"

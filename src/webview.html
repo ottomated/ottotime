@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Security-Policy"
+		content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-NONCE';">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script nonce="NONCE">
+		window.pastSessions = PAST_SESSIONS;
+		window.currentSession = CURRENT_SESSION;
+	</script>
+	<style>
+		.chart-container {
+			width: 100%;
+			max-width: 400px;
+			margin: 0 auto;
+			min-width: 250px;
+			aspect-ratio: 2/1;
+		}
+
+		main {
+			padding: 1rem;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		h1,
+		h2,
+		h3,
+		p {
+			margin: 0;
+		}
+
+		.git-origin {
+			font-size: 12px;
+			color: var(--vscode-disabledForeground);
+		}
+
+		.row {
+			display: flex;
+			flex-direction: row;
+			gap: 0.5rem;
+			width: 100%;
+		}
+
+		.row>section {
+			width: 50%;
+		}
+
+		h2 {
+			text-align: center;
+		}
+
+		.hr {
+			width: 75%;
+			height: 1px;
+			background: var(--vscode-foreground);
+			opacity: 0.5;
+			margin: 1rem 0;
+		}
+
+		#total,
+		#totalsessions {
+			text-align: center;
+			color: var(--vscode-disabledForeground);
+		}
+
+		.day-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 0.25rem;
+			cursor: pointer;
+		}
+
+
+		@media (max-width: 600px) {
+			.row {
+				flex-direction: column;
+			}
+
+			.row>section {
+				width: 100%;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<main>
+		<h1>PROJECT_NAME</h1>
+		<p class="git-origin">GIT_ORIGIN</p>
+		<div class="hr"></div>
+		<div class="row">
+			<section>
+				<h2>
+					Hours over Time
+				</h2>
+				<p id="total"></p>
+				<div class="chart-container">
+					<canvas id="chart"></canvas>
+				</div>
+			</section>
+			<section>
+				<h2>Coding Sessions</h2>
+				<p id="totalsessions"></p>
+				<div id="sessions"></div>
+			</section>
+		</div>
+	</main>
+	<script type="module" nonce="NONCE" src="SCRIPT_SRC"></script>
+</body>
+
+</html>
