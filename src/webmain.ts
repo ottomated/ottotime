@@ -115,6 +115,7 @@ const chart = new Chart(ctx, {
 				ticks: {
 					color: textColor,
 				},
+				suggestedMax: 1,
 			},
 			x: {
 				ticks: {
@@ -193,9 +194,13 @@ if (sessions.length > 0) {
 
 const totalEl = document.getElementById('total') as HTMLDivElement;
 const totalTime = cumulativeData[cumulativeData.length - 1];
-const hours = Math.floor(totalTime);
-const minutes = Math.floor((totalTime * 60) % 60);
-totalEl.textContent = `${hours}:${minutes.toString().padStart(2, '0')} total`;
+if (totalTime) {
+	const hours = Math.floor(totalTime);
+	const minutes = Math.floor((totalTime * 60) % 60);
+	totalEl.textContent = `${hours}:${minutes.toString().padStart(2, '0')} total`;
+} else {
+	totalEl.textContent = 'No time tracked yet';
+}
 
 const totalSessionsEl = document.getElementById(
 	'totalsessions'
