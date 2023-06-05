@@ -1,18 +1,21 @@
 {
 	"name": "ottotime",
-	"displayName": "ottotime",
-	"description": "",
+	"displayName": "Ottotime",
+	"description": "Project time tracking",
 	"version": "0.0.1",
-	"engines": {
-		"vscode": "^1.78.0"
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ottomated/ottotime.git"
 	},
-	"categories": [
-		"Other"
-	],
+	"scripts": {
+		"vscode:prepublish": "tsup",
+		"watch": "tsup --watch",
+		"lint": "eslint src --fix",
+		"pack": "vsce package --no-dependencies"
+	},
 	"activationEvents": [
 		"onStartupFinished"
 	],
-	"main": "./dist/extension.js",
 	"extensionDependencies": [
 		"vscode.git"
 	],
@@ -49,17 +52,20 @@
 			}
 		}
 	},
-	"scripts": {
-		"vscode:prepublish": "tsup",
-		"watch": "tsup --watch",
-		"lint": "eslint src --fix"
+	"engines": {
+		"vscode": "^1.78.0"
 	},
+	"categories": [
+		"Other"
+	],
+	"main": "./dist/extension.js",
 	"devDependencies": {
 		"@types/git-url-parse": "^9.0.1",
 		"@types/node": "20.2.5",
 		"@types/vscode": "^1.78.0",
 		"@typescript-eslint/eslint-plugin": "^5.59.8",
 		"@typescript-eslint/parser": "^5.59.8",
+		"@vscode/vsce": "^2.19.0",
 		"chart.js": "^4.3.0",
 		"date-fns": "^2.30.0",
 		"eslint": "^8.41.0",
