@@ -1,0 +1,72 @@
+{
+	"name": "ottotime",
+	"displayName": "ottotime",
+	"description": "Track time automatically",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.95.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"main": "./dist/extension.js",
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "ottotime.importKey",
+				"title": "Import Encryption Key",
+				"category": "Ottotime"
+			},
+			{
+				"command": "ottotime.disable",
+				"title": "Disable for this workspace",
+				"category": "Ottotime"
+			},
+			{
+				"command": "ottotime.enable",
+				"title": "Enable for this workspace",
+				"category": "Ottotime"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "ottotime.disable",
+					"when": "ottotime.enabled"
+				},
+				{
+					"command": "ottotime.enable",
+					"when": "!ottotime.enabled"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "pnpm package",
+		"compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+		"package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+		"build": "node esbuild.js",
+		"check-types": "tsc --noEmit",
+		"lint": "eslint src"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.16.0",
+		"@types/bun": "^1.1.14",
+		"@types/node": "20.x",
+		"@types/vscode": "^1.95.0",
+		"esbuild": "^0.24.0",
+		"eslint": "^9.13.0",
+		"eslint-config-prettier": "^9.1.0",
+		"eslint-plugin-prettier": "^5.2.1",
+		"globals": "^15.13.0",
+		"prettier": "^3.4.2",
+		"typescript": "^5.6.3",
+		"typescript-eslint": "^8.17.0"
+	},
+	"dependencies": {
+		"nanostores": "^0.11.3"
+	}
+}
