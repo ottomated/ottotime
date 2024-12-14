@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Items } from '../serde.mjs';
 	import { startOfDay } from 'date-fns/startOfDay';
 
