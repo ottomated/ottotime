@@ -1,14 +1,28 @@
 import * as vscode from 'vscode';
 import { atom } from 'nanostores';
 import { DataPersister } from './serde.mjs';
+import { OttotimePreview } from './preview/editor.mjs';
 
-const TIMEOUT_SECONDS = 5;
+const TIMEOUT_SECONDS = 5 * 60;
 
 export async function activate(context: vscode.ExtensionContext) {
+	const output = vscode.window.createOutputChannel('ottotime');
+	function log(message: string) {
+		output.appendLine(message);
+		console.log(message);
+	}
+
 	const $enabled = atom(context.workspaceState.get('ottotime.enabled', true));
 	const $workspaceFolder = atom(vscode.workspace.workspaceFolders?.[0]);
 	const $active = atom(vscode.window.state.focused);
 	let currentSession: { index: number; end: number } | null = null;
+	let persister: DataPersister | null = null;
+
+	vscode.window.registerCustomEditorProvider(
+		'ottotime.preview',
+		new OttotimePreview(context, $workspaceFolder),
+		{ supportsMultipleEditorsPerDocument: true },
+	);
 
 	//#region Sync state
 	context.subscriptions.push(
@@ -19,18 +33,21 @@ export async function activate(context: vscode.ExtensionContext) {
 			});
 			if (!value) return;
 			context.globalState.update('ottotime.key', value);
+			log('Imported key, reloading window');
 			vscode.commands.executeCommand('workbench.action.reloadWindow');
 		}),
 	);
 	context.subscriptions.push(
-		vscode.commands.registerCommand('ottotime.disable', () =>
-			$enabled.set(false),
-		),
+		vscode.commands.registerCommand('ottotime.disable', () => {
+			log('Disabled');
+			$enabled.set(false);
+		}),
 	);
 	context.subscriptions.push(
-		vscode.commands.registerCommand('ottotime.enable', () =>
-			$enabled.set(true),
-		),
+		vscode.commands.registerCommand('ottotime.enable', () => {
+			log('Enabled');
+			$enabled.set(true);
+		}),
 	);
 	context.subscriptions.push(
 		vscode.window.onDidChangeWindowState((e) => $active.set(e.focused)),
@@ -55,8 +72,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			focusedTimer = null;
 		}
 		if (active) {
+			log('Window focused');
 			focusedTimer = setInterval(tickFocused, 1000);
 			tickFocused();
+		} else {
+			log('Window unfocused');
 		}
 	});
 	context.subscriptions.push(
@@ -66,8 +86,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 	//#endregion
 
-	let persister: DataPersister | null = null;
 	$workspaceFolder.subscribe(async (workspace) => {
+		log(`Workspace changed to ${workspace?.name ?? 'null'}`);
 		if (!workspace) {
 			persister = null;
 			return;
@@ -80,9 +100,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (!persister) return;
 		const now = Math.floor(Date.now() / 1000);
 		if (currentSession && now - currentSession.end > TIMEOUT_SECONDS) {
+			log('Ending previous session');
 			currentSession = null;
 		}
 		if (!currentSession) {
+			log('Creating new session');
 			const index = await persister.add(now, now + 1);
 			currentSession = {
 				index,
