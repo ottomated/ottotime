@@ -9,7 +9,7 @@ const U32_MAX = 4_294_967_295;
 const HEADER = '# DO NOT EDIT! This file stores ottotime usage data.\n';
 const HEADER_LENGTH = HEADER.length;
 
-type Items = Array<{ start: number; end: number }>;
+export type Items = Array<{ start: number; end: number }>;
 
 export class DataPersister {
 	#file: FileHandle;
@@ -47,25 +47,8 @@ export class DataPersister {
 
 	async #read() {
 		const data = await readFile(this.path);
-		const items: Items = [];
+		const items = read(data);
 
-		for (let i = HEADER_LENGTH; i < data.length; i += 13) {
-			const start = Buffer.from(
-				data.subarray(i, i + 6).toString(),
-				'base64',
-			).readUInt32LE();
-			const end = Buffer.from(
-				data.subarray(i + 6, i + 12).toString(),
-				'base64',
-			).readUInt32LE();
-			items.push({ start, end });
-		}
-		console.log(
-			items.map(
-				({ start, end }) =>
-					`${new Date(start * 1000).toLocaleString()}, ${end - start}seconds`,
-			),
-		);
 		this.#items = items;
 		this.#dirty = false;
 	}
@@ -150,4 +133,22 @@ function u32_to_base64(n: number) {
 	const buffer = Buffer.alloc(4);
 	buffer.writeUint32LE(n);
 	return Buffer.from(buffer.toString('base64')).subarray(0, 6);
+}
+
+export function read(data: Buffer | Uint8Array) {
+	const items: Items = [];
+
+	for (let i = HEADER_LENGTH; i < data.length; i += 13) {
+		const start = Buffer.from(
+			data.subarray(i, i + 6).toString(),
+			'base64',
+		).readUInt32LE();
+		const end = Buffer.from(
+			data.subarray(i + 6, i + 12).toString(),
+			'base64',
+		).readUInt32LE();
+		items.push({ start, end });
+	}
+
+	return items;
 }
