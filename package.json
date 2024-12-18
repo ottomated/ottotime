@@ -46,9 +46,9 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "pnpm package",
-		"compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
-		"package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
-		"build": "node esbuild.js",
+		"compile": "pnpm run check-types && pnpm run lint && node esbuild.mjs",
+		"package": "pnpm run check-types && pnpm run lint && node esbuild.mjs --production",
+		"build": "node esbuild.mjs",
 		"check-types": "tsc --noEmit",
 		"lint": "eslint src"
 	},

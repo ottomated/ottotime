@@ -9,6 +9,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const $workspaceFolder = atom(vscode.workspace.workspaceFolders?.[0]);
 	const $active = atom(vscode.window.state.focused);
 	let currentSession: { index: number; end: number } | null = null;
+	let persister: DataPersister | null = null;
 
 	//#region Sync state
 	context.subscriptions.push(
@@ -66,7 +67,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 	//#endregion
 
-	let persister: DataPersister | null = null;
 	$workspaceFolder.subscribe(async (workspace) => {
 		if (!workspace) {
 			persister = null;
