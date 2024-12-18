@@ -1,5 +1,6 @@
 import { build } from 'esbuild';
 import { compile } from 'svelte/compiler';
+import { transform } from 'lightningcss';
 
 const production = process.argv.includes('--production');
 
@@ -15,7 +16,12 @@ async function buildSvelte() {
 		console.warn(warning.message);
 	}
 	await Bun.write('src/preview/Preview.js', client.js.code);
-	await Bun.write('dist/webview.css', client.css!.code);
+	const { code: css } = transform({
+		code: Buffer.from(client.css!.code),
+		filename: 'preview.css',
+		minify: production,
+	});
+	await Bun.write('dist/webview.css', css);
 	await build({
 		entryPoints: ['src/preview/webview.js'],
 		bundle: true,

@@ -15,6 +15,14 @@ export default ts.config(
 		},
 	},
 	{
+		languageOptions: {
+			globals: {
+				...globals.browser,
+			},
+		},
+		files: ['src/preview/webview.js'],
+	},
+	{
 		rules: {
 			'@typescript-eslint/no-unused-vars': [
 				'warn',
@@ -27,5 +35,5 @@ export default ts.config(
 			'prettier/prettier': 'warn',
 		},
 	},
-	{ ignores: ['dist/'] },
+	{ ignores: ['dist/', 'src/preview/Preview.js'] },
 );

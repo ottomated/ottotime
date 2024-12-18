@@ -29,13 +29,6 @@ export class OttotimePreview
 
 		const nonce = Date.now();
 
-		const scriptUri = webview.asWebviewUri(
-			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.js'),
-		);
-		const cssUri = webview.asWebviewUri(
-			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.css'),
-		);
-
 		document.listeners.push(
 			document.onChange((e) => {
 				webview.postMessage({ type: 'items', items: e.items });
@@ -50,6 +43,12 @@ export class OttotimePreview
 					});
 				}),
 			),
+		);
+		const scriptUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.js'),
+		);
+		const cssUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.css'),
 		);
 
 		webview.html = /* html */ `

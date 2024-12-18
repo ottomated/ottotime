@@ -5,6 +5,7 @@
 		"lib": ["ES2022"],
 		"sourceMap": true,
 		"strict": true,
-		"noUncheckedIndexedAccess": true
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true
 	}
 }
