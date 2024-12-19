@@ -27,11 +27,6 @@
 		],
 		"commands": [
 			{
-				"command": "ottotime.importKey",
-				"title": "Import Encryption Key",
-				"category": "Ottotime"
-			},
-			{
 				"command": "ottotime.disable",
 				"title": "Disable for this workspace",
 				"category": "Ottotime"
@@ -40,19 +35,42 @@
 				"command": "ottotime.enable",
 				"title": "Enable for this workspace",
 				"category": "Ottotime"
+			},
+			{
+				"command": "ottotime.showtime",
+				"title": "Show workspace time logs",
+				"category": "Ottotime"
+			},
+			{
+				"command": "ottotime.showalltimes",
+				"title": "Show time logs for all recent workspaces",
+				"category": "Ottotime"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
 					"command": "ottotime.disable",
-					"when": "ottotime.enabled"
+					"when": "ottotime.enabled && workbenchState != empty"
 				},
 				{
 					"command": "ottotime.enable",
-					"when": "!ottotime.enabled"
+					"when": "!ottotime.enabled && workbenchState != empty"
+				},
+				{
+					"command": "ottotime.showtime",
+					"when": "workbenchState != empty"
 				}
 			]
+		},
+		"icons": {
+			"otto-ottomated": {
+				"description": "Ottomated",
+				"default": {
+					"fontPath": "icons.woff",
+					"fontCharacter": "\\004f"
+				}
+			}
 		}
 	},
 	"scripts": {

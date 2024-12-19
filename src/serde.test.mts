@@ -182,6 +182,60 @@ describe('DataPersister', () => {
 
 		await $`rm -f /tmp/.ottotime8`;
 	});
+
+	test('git merge', async () => {
+		await $`rm -rf /tmp/ottotime-git && mkdir /tmp/ottotime-git`;
+		$.cwd('/tmp/ottotime-git');
+		await $`git init`;
+
+		const persister = new DataPersister('/tmp/ottotime-git/.ottotime');
+		await persister.startSession(MOCK_DATES[0]);
+		await expectFileToBe(
+			'/tmp/ottotime-git/.ottotime',
+			`${HEADER}${MOCK_DATES[0]}-  0:00\n`,
+		);
+
+		await Bun.write(
+			'/tmp/ottotime-git/.gitattributes',
+			'.ottotime merge=union',
+		);
+
+		await $`git add . && git commit -m "init"`;
+
+		await $`git checkout -b branch1`;
+		await persister.startSession(MOCK_DATES[1]);
+		await expectFileToBe(
+			'/tmp/ottotime-git/.ottotime',
+			`${HEADER}${MOCK_DATES[0]}-  0:00\n${MOCK_DATES[1]}-  0:00\n`,
+		);
+
+		await $`git add .ottotime && git commit -m "branch 1"`;
+
+		await $`git checkout main`;
+
+		await expectFileToBe(
+			'/tmp/ottotime-git/.ottotime',
+			`${HEADER}${MOCK_DATES[0]}-  0:00\n`,
+		);
+
+		await persister.startSession(MOCK_DATES[1] + 1);
+		await expectFileToBe(
+			'/tmp/ottotime-git/.ottotime',
+			`${HEADER}${MOCK_DATES[0]}-  0:00\n${MOCK_DATES[1] + 1}-  0:00\n`,
+		);
+		await $`git add .ottotime && git commit -m "main update"`;
+
+		await $`git merge branch1`.nothrow();
+
+		const contents = await Bun.file('/tmp/ottotime-git/.ottotime').text();
+		expect(contents).toBeOneOf([
+			`${HEADER}${MOCK_DATES[0]}-  0:00\n${MOCK_DATES[1]}-  0:00\n${MOCK_DATES[1] + 1}-  0:00\n`,
+			`${HEADER}${MOCK_DATES[0]}-  0:00\n${MOCK_DATES[1] + 1}-  0:00\n${MOCK_DATES[1]}-  0:00\n`,
+		]);
+
+		await $`rm -rf /tmp/ottotime-git`;
+		$.cwd(process.cwd());
+	});
 });
 
 async function expectFileToBe(path: string, contents: string) {

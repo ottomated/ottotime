@@ -28,19 +28,29 @@ export async function activate(context: vscode.ExtensionContext) {
 		{ supportsMultipleEditorsPerDocument: true },
 	);
 
-	//#region Sync state
 	context.subscriptions.push(
-		vscode.commands.registerCommand('ottotime.importKey', async () => {
-			const value = await vscode.window.showInputBox({
-				prompt: 'Paste your encryption key',
-				value: context.globalState.get('ottotime.key'),
-			});
-			if (!value) return;
-			context.globalState.update('ottotime.key', value);
-			log('Imported key, reloading window');
-			vscode.commands.executeCommand('workbench.action.reloadWindow');
+		vscode.commands.registerCommand('ottotime.showtime', () => {
+			const persister = $persister.get();
+			if (!persister) return;
+			vscode.commands.executeCommand(
+				'vscode.open',
+				vscode.Uri.file(persister.path),
+			);
 		}),
 	);
+
+	const statusBarItem = vscode.window.createStatusBarItem(
+		vscode.StatusBarAlignment.Left,
+		Number.MAX_VALUE,
+	);
+	// updateStatusBar();
+
+	statusBarItem.text = `$(otto-ottomated)`;
+	statusBarItem.color = '#9a4fef';
+	statusBarItem.command = 'ottotime.showtime';
+	statusBarItem.show();
+
+	//#region Sync state
 	context.subscriptions.push(
 		vscode.commands.registerCommand('ottotime.disable', () => {
 			log('Disabled');
@@ -109,6 +119,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			currentSession.start,
 			currentSession.end,
 		);
+		await ensureGitAttributes($workspaceFolder.get()?.uri);
 	}
 
 	context.subscriptions.push(
@@ -122,3 +133,34 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+const MERGE_CONFIG_COMMENT = '# Prevents merge conflicts in Ottotime files';
+const MERGE_CONFIG = '.ottotime merge=union';
+async function ensureGitAttributes(root: vscode.Uri | undefined) {
+	if (!root) return;
+	const gitFolder = await vscode.workspace.fs.stat(
+		vscode.Uri.joinPath(root, '.git'),
+	);
+	if (gitFolder.type !== vscode.FileType.Directory) return;
+
+	const gitattributes = vscode.Uri.joinPath(root, '.gitattributes');
+	try {
+		let data = await vscode.workspace.fs
+			.readFile(vscode.Uri.joinPath(root, '.gitattributes'))
+			.then((d) => d.toString());
+		if (data.includes(MERGE_CONFIG)) return;
+		if (!data.endsWith('\n')) data += '\n';
+		await vscode.workspace.fs.writeFile(
+			gitattributes,
+			Buffer.from(`${data}${MERGE_CONFIG_COMMENT}\n${MERGE_CONFIG}\n`),
+		);
+	} catch (e) {
+		if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
+			await vscode.workspace.fs.writeFile(
+				gitattributes,
+				Buffer.from(`${MERGE_CONFIG_COMMENT}\n${MERGE_CONFIG}\n`),
+			);
+		}
+		throw e;
+	}
+}

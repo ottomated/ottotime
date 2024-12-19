@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { FSWatcher, watch } from 'fs';
-import { read } from '../serde.mjs';
+import { Items, read } from '../serde.mjs';
 import { uneval } from 'devalue';
 import type { PreinitializedWritableAtom } from 'nanostores';
 
@@ -86,7 +86,6 @@ export class OttotimePreview
 	//#endregion
 }
 
-type Items = Array<{ start: number; end: number }>;
 export class OttotimeCustomDocument implements vscode.CustomDocument {
 	watcher: FSWatcher;
 	uri: vscode.Uri;

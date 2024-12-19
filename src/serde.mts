@@ -1,6 +1,8 @@
 import { FileHandle } from 'fs/promises';
 import { open } from 'fs/promises';
 
+export type Items = Array<{ start: number; end: number }>;
+
 export const HEADER = Buffer.from(
 	'# OTTOTIME\n# Do not edit manually. Check into git.\n',
 );
@@ -139,7 +141,7 @@ export function formatDuration(duration: number) {
 }
 
 export function read(data: Buffer) {
-	const items: Array<{ start: number; end: number }> = [];
+	const items: Items = [];
 
 	let start = 0;
 	let hyphen = -1;
