@@ -25,6 +25,7 @@ async function buildSvelte() {
 	await build({
 		entryPoints: ['src/preview/webview.js'],
 		bundle: true,
+		conditions: production ? ['production'] : ['development'],
 		format: 'esm',
 		minify: production,
 		sourcemap: !production,

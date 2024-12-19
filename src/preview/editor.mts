@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { FSWatcher, watch } from 'fs';
-import { type Items, read } from '../serde.mjs';
+import { read } from '../serde.mjs';
 import { uneval } from 'devalue';
 import type { PreinitializedWritableAtom } from 'nanostores';
 
@@ -16,7 +16,7 @@ export class OttotimePreview
 
 	async openCustomDocument(uri: vscode.Uri) {
 		const watcher = watch(uri.fsPath);
-		const items = read(await vscode.workspace.fs.readFile(uri));
+		const items = read(Buffer.from(await vscode.workspace.fs.readFile(uri)));
 		return new OttotimeCustomDocument(uri, watcher, items);
 	}
 
@@ -86,6 +86,7 @@ export class OttotimePreview
 	//#endregion
 }
 
+type Items = Array<{ start: number; end: number }>;
 export class OttotimeCustomDocument implements vscode.CustomDocument {
 	watcher: FSWatcher;
 	uri: vscode.Uri;
@@ -102,7 +103,9 @@ export class OttotimeCustomDocument implements vscode.CustomDocument {
 		this.watcher = watcher;
 		this.items = items;
 		watcher.on('change', async () => {
-			this.items = read(await vscode.workspace.fs.readFile(this.uri));
+			this.items = read(
+				Buffer.from(await vscode.workspace.fs.readFile(this.uri)),
+			);
 			this._onChange.fire({ items: this.items });
 		});
 	}

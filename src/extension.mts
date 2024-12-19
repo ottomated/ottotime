@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { atom } from 'nanostores';
+import { atom, computed } from 'nanostores';
 import { DataPersister } from './serde.mjs';
 import { OttotimePreview } from './preview/editor.mjs';
 
@@ -15,8 +15,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	const $enabled = atom(context.workspaceState.get('ottotime.enabled', true));
 	const $workspaceFolder = atom(vscode.workspace.workspaceFolders?.[0]);
 	const $active = atom(vscode.window.state.focused);
-	let currentSession: { index: number; end: number } | null = null;
-	let persister: DataPersister | null = null;
+	const $persister = computed($workspaceFolder, (workspace) => {
+		if (!workspace) return null;
+		const uri = vscode.Uri.joinPath(workspace.uri, '.ottotime');
+		return new DataPersister(uri.fsPath);
+	});
+	let currentSession: { start: number; end: number } | null = null;
 
 	vscode.window.registerCustomEditorProvider(
 		'ottotime.preview',
@@ -86,17 +90,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 	//#endregion
 
-	$workspaceFolder.subscribe(async (workspace) => {
-		log(`Workspace changed to ${workspace?.name ?? 'null'}`);
-		if (!workspace) {
-			persister = null;
-			return;
-		}
-		const file = vscode.Uri.joinPath(workspace.uri, '.ottotime');
-		persister = await DataPersister.create(file.fsPath);
-	});
-
 	async function tickFocused() {
+		const persister = $persister.get();
 		if (!persister) return;
 		const now = Math.floor(Date.now() / 1000);
 		if (currentSession && now - currentSession.end > TIMEOUT_SECONDS) {
@@ -105,21 +100,22 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 		if (!currentSession) {
 			log('Creating new session');
-			const index = await persister.add(now, now + 1);
-			currentSession = {
-				index,
-				end: now + 1,
-			};
+			const start = await persister.startSession(now);
+			currentSession = { start, end: now };
 			return;
 		}
 		currentSession.end = now;
-		await persister.setEnd(currentSession.index, now);
+		currentSession.start = await persister.updateSession(
+			currentSession.start,
+			currentSession.end,
+		);
 	}
 
 	context.subscriptions.push(
 		new vscode.Disposable(() => {
 			$enabled.off();
 			$workspaceFolder.off();
+			$persister.off();
 			$active.off();
 		}),
 	);
