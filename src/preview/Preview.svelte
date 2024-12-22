@@ -37,10 +37,21 @@
 				foundCurrent = true;
 				duration = currentSession!.end - currentSession!.start;
 			}
-
-			const value = days.get(date) ?? 0;
-			days.set(date, value + duration);
 			total += duration;
+
+			const endTime = (item.start + duration) * 1000;
+			const endDate = startOfDay(endTime).getTime();
+			if (endDate === date) {
+				const value = days.get(date) ?? 0;
+				days.set(date, value + duration);
+			} else {
+				const day2Duration = (endTime - endDate) / 1000;
+				const day1Duration = duration - day2Duration;
+				const day1 = days.get(date) ?? 0;
+				days.set(date, day1 + day1Duration);
+				const day2 = days.get(endDate) ?? 0;
+				days.set(endDate, day2 + day2Duration);
+			}
 		}
 		if (!foundCurrent && currentSession) {
 			const date = startOfDay(currentSession.start * 1000).getTime();
