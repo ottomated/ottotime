@@ -4,6 +4,20 @@ import { Items, read } from '../serde.mjs';
 import { uneval } from 'devalue';
 import type { PreinitializedWritableAtom } from 'nanostores';
 
+export type Message =
+	| {
+			type: 'items';
+			items: Items;
+	  }
+	| {
+			type: 'workspace';
+			workspace: string | null;
+	  }
+	| {
+			type: 'currentSession';
+			currentSession: null | { start: number; end: number };
+	  };
+
 export class OttotimePreview
 	implements vscode.CustomEditorProvider<OttotimeCustomDocument>
 {
@@ -12,12 +26,15 @@ export class OttotimePreview
 		private $workspaceFolder: PreinitializedWritableAtom<
 			vscode.WorkspaceFolder | undefined
 		>,
+		private $currentSession: PreinitializedWritableAtom<null | {
+			start: number;
+			end: number;
+		}>,
 	) {}
 
 	async openCustomDocument(uri: vscode.Uri) {
-		const watcher = watch(uri.fsPath);
 		const items = read(Buffer.from(await vscode.workspace.fs.readFile(uri)));
-		return new OttotimeCustomDocument(uri, watcher, items);
+		return new OttotimeCustomDocument(uri, items);
 	}
 
 	resolveCustomEditor(
@@ -29,20 +46,46 @@ export class OttotimePreview
 
 		const nonce = Date.now();
 
+		function send(message: Message) {
+			webview.postMessage(message);
+		}
+
 		document.listeners.push(
 			document.onChange((e) => {
-				webview.postMessage({ type: 'items', items: e.items });
+				send({ type: 'items', items: e.items });
 			}),
 		);
 		document.listeners.push(
 			new vscode.Disposable(
+				this.$currentSession.subscribe((currentSession) => {
+					send({
+						type: 'currentSession',
+						currentSession,
+					});
+				}),
+			),
+		);
+		document.listeners.push(
+			new vscode.Disposable(
 				this.$workspaceFolder.subscribe((workspace) => {
-					webview.postMessage({
+					send({
 						type: 'workspace',
 						workspace: workspace?.name ?? null,
 					});
 				}),
 			),
+		);
+
+		document.listeners.push(
+			webview.onDidReceiveMessage((command) => {
+				if (command === 'edit') {
+					vscode.commands.executeCommand(
+						'vscode.openWith',
+						document.uri,
+						'default',
+					);
+				}
+			}),
 		);
 		const scriptUri = webview.asWebviewUri(
 			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.js'),
@@ -68,6 +111,8 @@ export class OttotimePreview
 					window.initial = ${uneval({
 						items: document.items,
 						workspace: this.$workspaceFolder.get()?.name ?? null,
+						currentSession: this.$currentSession.get(),
+						xss: '<script>alert("xss")</script>',
 					})};
 				</script>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
@@ -87,7 +132,7 @@ export class OttotimePreview
 }
 
 export class OttotimeCustomDocument implements vscode.CustomDocument {
-	watcher: FSWatcher;
+	watcher?: FSWatcher;
 	uri: vscode.Uri;
 
 	items: Items;
@@ -97,21 +142,26 @@ export class OttotimeCustomDocument implements vscode.CustomDocument {
 	private readonly _onChange = new vscode.EventEmitter<{ items: Items }>();
 	readonly onChange = this._onChange.event;
 
-	constructor(uri: vscode.Uri, watcher: FSWatcher, items: Items) {
+	constructor(uri: vscode.Uri, items: Items) {
 		this.uri = uri;
-		this.watcher = watcher;
 		this.items = items;
-		watcher.on('change', async () => {
-			this.items = read(
-				Buffer.from(await vscode.workspace.fs.readFile(this.uri)),
-			);
-			this._onChange.fire({ items: this.items });
-		});
+		try {
+			this.watcher = watch(uri.fsPath);
+			this.watcher.on('change', async () => {
+				this.items = read(
+					Buffer.from(await vscode.workspace.fs.readFile(this.uri)),
+				);
+				this._onChange.fire({ items: this.items });
+			});
+		} catch (e) {
+			// Watching failed, we just won't get any updates
+			console.error(e);
+		}
 	}
 
 	dispose(): void {
 		this._onChange.dispose();
-		this.watcher.close();
+		this.watcher?.close();
 		this.listeners.forEach((l) => l.dispose());
 	}
 }

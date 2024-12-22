@@ -1,33 +1,73 @@
 <script lang="ts">
 	import type { Items } from '../serde.mjs';
+	import type { Message } from './editor.mjs';
 	import { startOfDay } from 'date-fns/startOfDay';
 
-	const { initial } = $props();
+	const {
+		initial,
+		vscode,
+	}: {
+		initial: {
+			items: Items;
+			workspace: string | null;
+			currentSession: null | { start: number; end: number };
+		};
+		vscode: { postMessage(msg: string): void };
+	} = $props();
 
-	let workspace = $state<string>(initial.workspace);
+	let workspace = $state<string | null>(initial.workspace);
 	let items = $state.raw<Items>(initial.items);
+	let currentSession = $state.raw<null | { start: number; end: number }>(
+		initial.currentSession,
+	);
 
 	const days = $derived.by(() => {
 		const days = new Map<number, number>();
+
+		let foundCurrent = currentSession === null;
 		for (const item of items) {
 			const date = startOfDay(item.start * 1000).getTime();
-			const duration = item.end - item.start;
+
+			let duration = item.end - item.start;
+
+			if (!foundCurrent && currentSession!.start === item.start) {
+				foundCurrent = true;
+				duration = currentSession!.end - currentSession!.start;
+			}
+
 			const value = days.get(date) ?? 0;
 			days.set(date, value + duration);
 		}
 		return [...days].sort((a, b) => a[0] - b[0]);
 	});
+
+	function formatDuration(duration: number) {
+		const seconds = duration % 60;
+		const minutes = (duration - seconds) / 60;
+		return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+	}
 </script>
 
 <svelte:window
-	onmessage={(ev) => {
+	onmessage={(ev: MessageEvent<Message>) => {
+		if (typeof ev.data === 'string') return;
 		if (ev.data.type === 'items') {
 			items = ev.data.items;
 		} else if (ev.data.type === 'workspace') {
 			workspace = ev.data.workspace;
+		} else if (ev.data.type === 'currentSession') {
+			currentSession = ev.data.currentSession;
 		}
 	}}
 />
+
+<svelte:head>
+	<title>pog</title>
+	<style>
+		.a {
+		}
+	</style>
+</svelte:head>
 
 <main>
 	<div class="header">
@@ -46,9 +86,22 @@
 			<span>Ottotime</span>
 			<span class="workspace">{workspace}</span>
 		</div>
+		<button
+			class="edit"
+			onclick={() => {
+				vscode.postMessage('edit');
+			}}
+		>
+			<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+				<title>Edit</title>
+				<path
+					d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"
+				/>
+			</svg>
+		</button>
 	</div>
 	{#each days as day}
-		<div>{new Date(day[0]).toLocaleDateString()}: {day[1]}</div>
+		<div>{new Date(day[0]).toLocaleDateString()}: {formatDuration(day[1])}</div>
 	{/each}
 </main>
 
@@ -72,5 +125,20 @@
 	.workspace {
 		opacity: 0.7;
 		font-size: 0.75rem;
+	}
+
+	.edit {
+		margin-left: auto;
+		background: transparent;
+		padding: 2px;
+		border-radius: 5px;
+		color: white;
+		border: none;
+		width: 20px;
+		height: 20px;
+		cursor: pointer;
+	}
+	.edit:hover {
+		background: rgba(90, 93, 94, 0.31);
 	}
 </style>

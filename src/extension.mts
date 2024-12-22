@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { atom, computed } from 'nanostores';
 import { DataPersister } from './serde.mjs';
 import { OttotimePreview } from './preview/editor.mjs';
+import { previewAll } from './preview/all.mjs';
 
 const TIMEOUT_SECONDS = 5 * 60;
 
@@ -9,7 +10,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel('ottotime');
 	function log(message: string) {
 		output.appendLine(message);
-		console.log(message);
+		console.log('{O}', message);
 	}
 
 	const $enabled = atom(context.workspaceState.get('ottotime.enabled', true));
@@ -20,11 +21,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		const uri = vscode.Uri.joinPath(workspace.uri, '.ottotime');
 		return new DataPersister(uri.fsPath);
 	});
-	let currentSession: { start: number; end: number } | null = null;
+	const $currentSession = atom<null | { start: number; end: number }>(null);
 
 	vscode.window.registerCustomEditorProvider(
 		'ottotime.preview',
-		new OttotimePreview(context, $workspaceFolder),
+		new OttotimePreview(context, $workspaceFolder, $currentSession),
 		{ supportsMultipleEditorsPerDocument: true },
 	);
 
@@ -38,15 +39,15 @@ export async function activate(context: vscode.ExtensionContext) {
 			);
 		}),
 	);
+	context.subscriptions.push(
+		vscode.commands.registerCommand('ottotime.showalltimes', previewAll),
+	);
 
 	const statusBarItem = vscode.window.createStatusBarItem(
 		vscode.StatusBarAlignment.Left,
 		Number.MAX_VALUE,
 	);
-	// updateStatusBar();
-
-	statusBarItem.text = `$(otto-ottomated)`;
-	statusBarItem.color = '#9a4fef';
+	statusBarItem.text = '$(otto-ottomated)';
 	statusBarItem.command = 'ottotime.showtime';
 	statusBarItem.show();
 
@@ -66,6 +67,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.window.onDidChangeWindowState((e) => $active.set(e.focused)),
 	);
+	// sometimes it isn't updated immediately?
+	setTimeout(() => {
+		$active.set(vscode.window.state.focused);
+	}, 5000);
 
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeWorkspaceFolders(() =>
@@ -86,12 +91,23 @@ export async function activate(context: vscode.ExtensionContext) {
 			focusedTimer = null;
 		}
 		if (active) {
-			log('Window focused');
+			log('Window focused at ' + new Date().toISOString());
 			focusedTimer = setInterval(tickFocused, 1000);
 			tickFocused();
 		} else {
-			log('Window unfocused');
+			log('Window unfocused at ' + new Date().toISOString());
 		}
+	});
+	$currentSession.subscribe((currentSession) => {
+		if (!currentSession) {
+			statusBarItem.text = `$(otto-ottomated)`;
+			return;
+		}
+
+		const duration = currentSession.end - currentSession.start;
+		const seconds = duration % 60;
+		const minutes = (duration - seconds) / 60;
+		statusBarItem.text = `$(otto-ottomated) ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 	});
 	context.subscriptions.push(
 		new vscode.Disposable(() => {
@@ -100,25 +116,61 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 	//#endregion
 
+	let openSessionError: string | null = null;
+	function showSessionError(error: string) {
+		if (openSessionError === error) return;
+		openSessionError = error;
+		vscode.window.showErrorMessage(error).then(() => (openSessionError = null));
+	}
+	let lastSaved = 0;
 	async function tickFocused() {
 		const persister = $persister.get();
 		if (!persister) return;
 		const now = Math.floor(Date.now() / 1000);
+		let currentSession = $currentSession.get();
 		if (currentSession && now - currentSession.end > TIMEOUT_SECONDS) {
-			log('Ending previous session');
+			log(
+				'Ending previous session at ' +
+					new Date(currentSession.end * 1000).toISOString(),
+			);
+			try {
+				await persister.updateSession(currentSession.start, currentSession.end);
+			} catch (e) {
+				console.error(e);
+				showSessionError(String(e));
+			}
+			$currentSession.set(null);
 			currentSession = null;
 		}
 		if (!currentSession) {
-			log('Creating new session');
-			const start = await persister.startSession(now);
-			currentSession = { start, end: now };
+			log('Starting new session at ' + new Date(now * 1000).toISOString());
+			try {
+				const start = await persister.startSession(now);
+				currentSession = { start, end: now };
+				$currentSession.set(currentSession);
+				lastSaved = now;
+			} catch (e) {
+				console.error(e);
+				showSessionError(String(e));
+			}
 			return;
 		}
 		currentSession.end = now;
-		currentSession.start = await persister.updateSession(
-			currentSession.start,
-			currentSession.end,
-		);
+		// Save every 30 seconds
+		if (now - lastSaved >= 30) {
+			log(`Saving session at ${new Date(now * 1000).toISOString()}`);
+			lastSaved = now;
+			try {
+				currentSession.start = await persister.updateSession(
+					currentSession.start,
+					currentSession.end,
+				);
+			} catch (e) {
+				console.error(e);
+				showSessionError(String(e));
+			}
+		}
+		$currentSession.notify();
 		await ensureGitAttributes($workspaceFolder.get()?.uri);
 	}
 
@@ -128,6 +180,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			$workspaceFolder.off();
 			$persister.off();
 			$active.off();
+			$currentSession.off();
 		}),
 	);
 }
@@ -138,9 +191,17 @@ const MERGE_CONFIG_COMMENT = '# Prevents merge conflicts in Ottotime files';
 const MERGE_CONFIG = '.ottotime merge=union';
 async function ensureGitAttributes(root: vscode.Uri | undefined) {
 	if (!root) return;
-	const gitFolder = await vscode.workspace.fs.stat(
-		vscode.Uri.joinPath(root, '.git'),
-	);
+	let gitFolder: vscode.FileStat;
+	try {
+		gitFolder = await vscode.workspace.fs.stat(
+			vscode.Uri.joinPath(root, '.git'),
+		);
+	} catch (e) {
+		if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
+			return;
+		}
+		throw e;
+	}
 	if (gitFolder.type !== vscode.FileType.Directory) return;
 
 	const gitattributes = vscode.Uri.joinPath(root, '.gitattributes');

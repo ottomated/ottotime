@@ -71,7 +71,19 @@
 					"fontCharacter": "\\004f"
 				}
 			}
-		}
+		},
+		"languages": [
+			{
+				"id": "ottotime",
+				"filenames": [
+					".ottotime"
+				],
+				"icon": {
+					"dark": "icon-dark.svg",
+					"light": "icon-light.svg"
+				}
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "pnpm package",

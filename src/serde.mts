@@ -1,5 +1,4 @@
-import { FileHandle } from 'fs/promises';
-import { open } from 'fs/promises';
+import { type FileHandle, open } from 'fs/promises';
 
 export type Items = Array<{ start: number; end: number }>;
 
@@ -25,7 +24,15 @@ export class DataPersister {
 	 * @returns The startTime of the session (may be different if the session was split)
 	 */
 	async startSession(startTime: number, duration = 0): Promise<number> {
-		const file = await open(this.path, 'a');
+		let file: FileHandle;
+		try {
+			file = await open(this.path, 'a');
+		} catch (e) {
+			if (e instanceof Error && 'code' in e && e.code === 'EISDir') {
+				throw new Error(`${this.path} is a directory.`);
+			}
+			throw e;
+		}
 
 		const info = await file.stat();
 
