@@ -1,0 +1,27 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: 'pnpm'
+
+      - name: Install packages
+        run: pnpm install
+
+      - name: Publish
+        run: pnpm vsce publish -p ${{ secrets.VSCE_ACCESS_TOKEN }}
