@@ -8,6 +8,7 @@
 	"engines": {
 		"vscode": "^1.96.0"
 	},
+	"license": "GPL-3.0-only",
 	"categories": [
 		"Other"
 	],
@@ -95,7 +96,7 @@
 		"build": "bun esbuild.ts",
 		"check-types": "tsc --noEmit",
 		"lint": "eslint src",
-		"vsce:package": "vsce package --no-dependencies --skip-license -o ottotime.vsix"
+		"vsce:package": "vsce package --no-dependencies -o ottotime.vsix"
 	},
 	"repository": {
 		"type": "git",
