@@ -14,6 +14,10 @@ Automatic time tracking powered by git.
 
 ## Release Notes
 
+### 1.0.2
+
+Added license.
+
 ### 1.0.1
 
 Save time data on vscode shutdown.
