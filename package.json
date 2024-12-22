@@ -2,7 +2,7 @@
 	"name": "ottotime",
 	"displayName": "ottotime",
 	"description": "Track time automatically",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"author": "Ottomated",
 	"publisher": "Ottomated",
 	"engines": {

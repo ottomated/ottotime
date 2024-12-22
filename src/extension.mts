@@ -6,6 +6,8 @@ import { previewAll } from './preview/all.mjs';
 
 const TIMEOUT_SECONDS = 5 * 60;
 
+let onShutdown: (() => Promise<void>) | undefined;
+
 export async function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel('ottotime');
 	function log(message: string) {
@@ -177,6 +179,21 @@ export async function activate(context: vscode.ExtensionContext) {
 		await ensureGitAttributes($workspaceFolder.get()?.uri);
 	}
 
+	onShutdown = async () => {
+		if (!$enabled.get()) return;
+		const persister = $persister.get();
+		if (!persister) return;
+		const currentSession = $currentSession.get();
+		if (!currentSession) return;
+		const now = Math.floor(Date.now() / 1000);
+		if (now - currentSession.end > TIMEOUT_SECONDS) return;
+		try {
+			await persister.updateSession(currentSession.start, currentSession.end);
+		} catch (e) {
+			console.error(e);
+		}
+	};
+
 	context.subscriptions.push(
 		new vscode.Disposable(() => {
 			$enabled.off();
@@ -188,7 +205,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 }
 
-export function deactivate() {}
+export async function deactivate() {
+	await onShutdown?.();
+}
 
 const MERGE_CONFIG_COMMENT = '# Prevents merge conflicts in Ottotime files';
 const MERGE_CONFIG = '.ottotime merge=union';
