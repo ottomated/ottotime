@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { read } from '../serde.mjs';
 import { Message, OttotimeCustomDocument } from './editor.mjs';
-import { uneval } from 'devalue';
 import { PreinitializedWritableAtom } from 'nanostores';
 import { basename } from 'path';
+import { getHtml } from './html.mjs';
 
 type Workspace = {
 	doc: OttotimeCustomDocument;
@@ -72,13 +72,6 @@ export async function previewAll(
 
 	const webview = panel.webview;
 
-	const nonce = Date.now();
-	const scriptUri = webview.asWebviewUri(
-		vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview.js'),
-	);
-	const cssUri = webview.asWebviewUri(
-		vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview.css'),
-	);
 	function send(message: Message) {
 		webview.postMessage(message);
 	}
@@ -128,32 +121,16 @@ export async function previewAll(
 		});
 	}
 
-	webview.html = /* html */ `
-		<!DOCTYPE html>
-		<html lang="en">
-		<head>
-			<meta charset="UTF-8">
-			<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} blob:; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<link rel="stylesheet" href="${cssUri}">
-			<title>Ottotime</title>
-		</head>
-		<body>
-			<div id="app"></div>
-			<script nonce="${nonce}">
-				window.initial = ${uneval(
-					workspaces.map((ws, i) => ({
-						items: ws.doc.items,
-						workspace: ws.name,
-						currentSession: i === currentIndex ? $currentSession.get() : null,
-					})),
-				)};
-				window.single = false;
-			</script>
-			<script nonce="${nonce}" src="${scriptUri}"></script>
-		</body>
-		</html>`;
+	webview.html = getHtml(
+		workspaces.map((ws, i) => ({
+			items: ws.doc.items,
+			workspace: ws.name,
+			currentSession: i === currentIndex ? $currentSession.get() : null,
+		})),
+		false,
+		webview,
+		context,
+	);
 	context.subscriptions.push(panel);
 	panel.onDidDispose(() => {
 		workspaces.forEach((w) => w.doc.dispose());

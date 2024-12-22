@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { FSWatcher, watch } from 'fs';
 import { Items, read } from '../serde.mjs';
-import { uneval } from 'devalue';
 import type { PreinitializedWritableAtom } from 'nanostores';
+import { getHtml } from './html.mjs';
 
 export type Message =
 	| {
@@ -97,40 +97,19 @@ export class OttotimePreview
 				}
 			}),
 		);
-		const nonce = Date.now();
-		const scriptUri = webview.asWebviewUri(
-			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.js'),
-		);
-		const cssUri = webview.asWebviewUri(
-			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.css'),
-		);
 
-		webview.html = /* html */ `
-			<!DOCTYPE html>
-			<html lang="en">
-			<head>
-				<meta charset="UTF-8">
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} blob:; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-
-				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-				<link rel="stylesheet" href="${cssUri}">
-				<title>Ottotime</title>
-			</head>
-			<body>
-				<div id="app"></div>
-				<script nonce="${nonce}">
-					window.initial = ${uneval([
-						{
-							items: document.items,
-							workspace: this.$workspaceFolder.get()?.name ?? null,
-							currentSession: this.$currentSession.get(),
-						},
-					])};
-					window.single = true;
-				</script>
-				<script nonce="${nonce}" src="${scriptUri}"></script>
-			</body>
-			</html>`;
+		webview.html = getHtml(
+			[
+				{
+					items: document.items,
+					workspace: this.$workspaceFolder.get()?.name ?? null,
+					currentSession: this.$currentSession.get(),
+				},
+			],
+			true,
+			webview,
+			this.context,
+		);
 	}
 
 	//#region readonly scaffolding

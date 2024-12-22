@@ -126,6 +126,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 	let lastSaved = 0;
 	async function tickFocused() {
+		if (!$enabled.get()) return;
 		const persister = $persister.get();
 		if (!persister) return;
 		const now = Math.floor(Date.now() / 1000);

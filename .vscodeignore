@@ -4,9 +4,11 @@ out/**
 node_modules/**
 src/**
 .gitignore
-.yarnrc
-esbuild.js
-vsc-extension-quickstart.md
+.prettierrc
+demo.png
+esbuild.ts
+eslint.config.mjs
+pnpm-lock.yaml
 **/tsconfig.json
 **/eslint.config.mjs
 **/*.map
