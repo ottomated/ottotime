@@ -24,5 +24,11 @@ jobs:
       - name: Install packages
         run: pnpm install
 
-      - name: Publish
-        run: pnpm vsce:publish -p ${{ secrets.VSCE_ACCESS_TOKEN }}
+      - name: Package
+        run: pnpm vsce:package
+
+      - name: Publish to vscode marketplace
+        run: pnpm vsce publish -i ottotime.vsix -p ${{ secrets.VSCE_ACCESS_TOKEN }}
+
+      - name: Publish to open-vsx
+        run: pnpx ovsx publish ottotime.vsix -p ${{ secrets.OPEN_VSX_TOKEN }}

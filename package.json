@@ -95,8 +95,7 @@
 		"build": "bun esbuild.ts",
 		"check-types": "tsc --noEmit",
 		"lint": "eslint src",
-		"vsce:package": "vsce package --no-dependencies --skip-license",
-		"vsce:publish": "vsce publish --no-dependencies --skip-license"
+		"vsce:package": "vsce package --no-dependencies --skip-license -o ottotime.vsix"
 	},
 	"repository": {
 		"type": "git",
