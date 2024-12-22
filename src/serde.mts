@@ -1,6 +1,6 @@
 import { type FileHandle, open } from 'fs/promises';
 
-export type Items = Array<{ start: number; end: number }>;
+export type Items = Array<{ start: number; duration: number }>;
 
 export const HEADER = Buffer.from(
 	'# OTTOTIME\n# Do not edit manually. Check into git.\n',
@@ -202,6 +202,6 @@ function parseLine(
 	const start = parseInt(startTime);
 	return {
 		start,
-		end: start + parseInt(minutes) * 60 + parseInt(seconds),
+		duration: parseInt(minutes) * 60 + parseInt(seconds),
 	};
 }

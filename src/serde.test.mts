@@ -33,8 +33,8 @@ describe('DataPersister', () => {
 			Buffer.from(await Bun.file('/tmp/.ottotime2').arrayBuffer()),
 		);
 		expect(items).toEqual([
-			{ start: MOCK_DATES[0], end: MOCK_DATES[0] + 10 * 60 },
-			{ start: MOCK_DATES[1], end: MOCK_DATES[1] + 5 * 60 + 55 },
+			{ start: MOCK_DATES[0], duration: 10 * 60 },
+			{ start: MOCK_DATES[1], duration: 5 * 60 + 55 },
 		]);
 
 		await $`rm -f /tmp/.ottotime2`;

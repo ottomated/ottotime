@@ -8,14 +8,17 @@ export type Message =
 	| {
 			type: 'items';
 			items: Items;
+			i?: number;
 	  }
 	| {
 			type: 'workspace';
 			workspace: string | null;
+			i?: number;
 	  }
 	| {
 			type: 'currentSession';
 			currentSession: null | { start: number; end: number };
+			i?: number;
 	  };
 
 export class OttotimePreview
@@ -43,8 +46,6 @@ export class OttotimePreview
 	) {
 		const webview = webviewPanel.webview;
 		webview.options = { enableScripts: true };
-
-		const nonce = Date.now();
 
 		function send(message: Message) {
 			webview.postMessage(message);
@@ -78,15 +79,25 @@ export class OttotimePreview
 
 		document.listeners.push(
 			webview.onDidReceiveMessage((command) => {
+				if (command === 'mounted') {
+					send({ type: 'items', items: document.items });
+					send({
+						type: 'currentSession',
+						currentSession: this.$currentSession.get(),
+					});
+					return;
+				}
 				if (command === 'edit') {
 					vscode.commands.executeCommand(
 						'vscode.openWith',
 						document.uri,
 						'default',
 					);
+					return;
 				}
 			}),
 		);
+		const nonce = Date.now();
 		const scriptUri = webview.asWebviewUri(
 			vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview.js'),
 		);
@@ -108,12 +119,14 @@ export class OttotimePreview
 			<body>
 				<div id="app"></div>
 				<script nonce="${nonce}">
-					window.initial = ${uneval({
-						items: document.items,
-						workspace: this.$workspaceFolder.get()?.name ?? null,
-						currentSession: this.$currentSession.get(),
-						xss: '<script>alert("xss")</script>',
-					})};
+					window.initial = ${uneval([
+						{
+							items: document.items,
+							workspace: this.$workspaceFolder.get()?.name ?? null,
+							currentSession: this.$currentSession.get(),
+						},
+					])};
+					window.single = true;
 				</script>
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>

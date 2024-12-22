@@ -40,7 +40,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	);
 	context.subscriptions.push(
-		vscode.commands.registerCommand('ottotime.showalltimes', previewAll),
+		vscode.commands.registerCommand('ottotime.showalltimes', () =>
+			previewAll(context, $workspaceFolder.get(), $currentSession),
+		),
 	);
 
 	const statusBarItem = vscode.window.createStatusBarItem(
