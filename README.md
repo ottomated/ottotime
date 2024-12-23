@@ -14,16 +14,21 @@ Automatic time tracking powered by git.
 
 ## Release Notes
 
+### 1.0.3
+
+- Display hours in the bottom left status bar.
+- Don't live-update files that aren't on the file system (i.e. git diffs).
+
 ### 1.0.2
 
-Added license.
+- Added license.
 
 ### 1.0.1
 
-Save time data on vscode shutdown.
+- Save time data on vscode shutdown.
 
 ### 1.0.0
 
-Initial release.
+- Initial release.
 
 ---
