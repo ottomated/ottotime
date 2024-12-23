@@ -109,9 +109,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		const duration = currentSession.end - currentSession.start;
-		const seconds = duration % 60;
-		const minutes = (duration - seconds) / 60;
-		statusBarItem.text = `$(otto-ottomated) ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+		statusBarItem.text = `$(otto-ottomated) ${formatDuration(duration)}`;
 	});
 	context.subscriptions.push(
 		new vscode.Disposable(() => {
@@ -174,9 +172,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				console.error(e);
 				showSessionError(String(e));
 			}
+			ensureGitAttributes($workspaceFolder.get()?.uri);
 		}
 		$currentSession.notify();
-		await ensureGitAttributes($workspaceFolder.get()?.uri);
 	}
 
 	onShutdown = async () => {
@@ -246,4 +244,12 @@ async function ensureGitAttributes(root: vscode.Uri | undefined) {
 		}
 		throw e;
 	}
+}
+
+function formatDuration(duration: number) {
+	const hours = Math.floor(duration / 60 / 60);
+	const minutes = Math.floor((duration / 60) % 60);
+	const seconds = Math.floor(duration % 60);
+	if (hours === 0) return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+	return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 }
