@@ -51,21 +51,26 @@ export class OttotimePreview
 			webview.postMessage(message);
 		}
 
+		// If no file watcher,
+		const trackCurrentSession = !!document.watcher;
+
 		document.listeners.push(
 			document.onChange((e) => {
 				send({ type: 'items', items: e.items });
 			}),
 		);
-		document.listeners.push(
-			new vscode.Disposable(
-				this.$currentSession.subscribe((currentSession) => {
-					send({
-						type: 'currentSession',
-						currentSession,
-					});
-				}),
-			),
-		);
+		if (trackCurrentSession) {
+			document.listeners.push(
+				new vscode.Disposable(
+					this.$currentSession.subscribe((currentSession) => {
+						send({
+							type: 'currentSession',
+							currentSession,
+						});
+					}),
+				),
+			);
+		}
 		document.listeners.push(
 			new vscode.Disposable(
 				this.$workspaceFolder.subscribe((workspace) => {
@@ -81,10 +86,12 @@ export class OttotimePreview
 			webview.onDidReceiveMessage((command) => {
 				if (command === 'mounted') {
 					send({ type: 'items', items: document.items });
-					send({
-						type: 'currentSession',
-						currentSession: this.$currentSession.get(),
-					});
+					if (trackCurrentSession) {
+						send({
+							type: 'currentSession',
+							currentSession: this.$currentSession.get(),
+						});
+					}
 					return;
 				}
 				if (command === 'edit') {
@@ -103,7 +110,9 @@ export class OttotimePreview
 				{
 					items: document.items,
 					workspace: this.$workspaceFolder.get()?.name ?? null,
-					currentSession: this.$currentSession.get(),
+					currentSession: trackCurrentSession
+						? this.$currentSession.get()
+						: null,
 				},
 			],
 			true,
@@ -137,6 +146,7 @@ export class OttotimeCustomDocument implements vscode.CustomDocument {
 	constructor(uri: vscode.Uri, items: Items) {
 		this.uri = uri;
 		this.items = items;
+		if (uri.scheme !== 'file') return; // Don't watch non-file uris
 		try {
 			this.watcher = watch(uri.fsPath);
 			this.watcher.on('change', async () => {
