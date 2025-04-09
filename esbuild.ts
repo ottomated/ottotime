@@ -43,6 +43,11 @@ async function buildExtension() {
 		format: 'cjs',
 		minify: production,
 		sourcemap: !production,
+		define: {
+			'process.env.NODE_ENV': JSON.stringify(
+				production ? 'production' : 'development',
+			),
+		},
 		sourcesContent: false,
 		platform: 'node',
 		outfile: 'dist/extension.js',

@@ -33,6 +33,7 @@ export default ts.config(
 				},
 			],
 			'prettier/prettier': 'warn',
+			'no-console': ['warn', { allow: ['warn', 'error'] }],
 		},
 	},
 	{ ignores: ['dist/', 'src/preview/Preview.js'] },

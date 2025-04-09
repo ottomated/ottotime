@@ -57,7 +57,6 @@ export async function previewAll(
 		}),
 	);
 
-	console.log(workspaces, currentIndex);
 	const panel = vscode.window.createWebviewPanel(
 		'ottotime.all',
 		'Ottotime (all workspaces)',

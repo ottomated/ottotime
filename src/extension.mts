@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { atom, computed } from 'nanostores';
-import { DataPersister } from './serde.mjs';
+import { DataPersister, read } from './serde.mjs';
 import { OttotimePreview } from './preview/editor.mjs';
 import { previewAll } from './preview/all.mjs';
 
@@ -12,7 +12,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel('ottotime');
 	function log(message: string) {
 		output.appendLine(message);
-		console.log('{O}', message);
+		if (process.env.NODE_ENV !== 'production') {
+			// eslint-disable-next-line no-console
+			console.log('{O}', message);
+		}
 	}
 
 	const $enabled = atom(context.workspaceState.get('ottotime.enabled', true));
@@ -57,9 +60,25 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	//#region Sync state
 	context.subscriptions.push(
-		vscode.commands.registerCommand('ottotime.disable', () => {
+		vscode.commands.registerCommand('ottotime.disable', async () => {
 			log('Disabled');
 			$enabled.set(false);
+
+			// Delete file if there's not very much time in it
+			const root = $workspaceFolder.get();
+			if (!root) return;
+
+			const uri = vscode.Uri.joinPath(root.uri, '.ottotime');
+
+			const items = read(Buffer.from(await vscode.workspace.fs.readFile(uri)));
+			let total = 0;
+			for (const item of items) {
+				total += item.duration;
+				if (total > 60 * 5) return;
+			}
+			// Less than 5 minutes, delete the file
+			await vscode.workspace.fs.delete(uri);
+			await deleteGitAttributes(root.uri);
 		}),
 	);
 	context.subscriptions.push(
@@ -227,7 +246,7 @@ async function ensureGitAttributes(root: vscode.Uri | undefined) {
 	const gitattributes = vscode.Uri.joinPath(root, '.gitattributes');
 	try {
 		let data = await vscode.workspace.fs
-			.readFile(vscode.Uri.joinPath(root, '.gitattributes'))
+			.readFile(gitattributes)
 			.then((d) => d.toString());
 		if (data.includes(MERGE_CONFIG)) return;
 		if (!data.endsWith('\n')) data += '\n';
@@ -243,6 +262,26 @@ async function ensureGitAttributes(root: vscode.Uri | undefined) {
 			);
 		}
 		throw e;
+	}
+}
+async function deleteGitAttributes(root: vscode.Uri | undefined) {
+	if (!root) return;
+	const gitattributes = vscode.Uri.joinPath(root, '.gitattributes');
+
+	try {
+		const data = await vscode.workspace.fs
+			.readFile(gitattributes)
+			.then((d) => d.toString());
+		const lines = data.split('\n');
+		const shouldDelete = lines.every(
+			(line) =>
+				line === '' || line === MERGE_CONFIG_COMMENT || line === MERGE_CONFIG,
+		);
+		if (shouldDelete) {
+			await vscode.workspace.fs.delete(gitattributes);
+		}
+	} catch (_) {
+		return;
 	}
 }
 

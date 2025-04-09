@@ -2,11 +2,11 @@
 	"name": "ottotime",
 	"displayName": "ottotime",
 	"description": "Track time automatically",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"author": "Ottomated",
 	"publisher": "Ottomated",
 	"engines": {
-		"vscode": "^1.96.0"
+		"vscode": "^1.90.0"
 	},
 	"license": "GPL-3.0-only",
 	"categories": [
