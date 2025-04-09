@@ -30,5 +30,6 @@ jobs:
       - name: Publish to open-vsx
         run: pnpx ovsx publish ottotime.vsix -p ${{ secrets.OPEN_VSX_TOKEN }}
 
+        # https://dev.azure.com/ottomated/_usersSettings/tokens
       - name: Publish to vscode marketplace
-        run: pnpm vsce publish -i ottotime.vsix -p ${{ secrets.VSCE_ACCESS_TOKEN }}
+        run: pnpm vsce publish -i ottotime.vsix -p ${{ secrets.VSCODE_ACCESS_TOKEN }}
