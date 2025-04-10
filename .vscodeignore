@@ -14,3 +14,6 @@ pnpm-lock.yaml
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.ottotime
+.github
+LICENSE.txt
