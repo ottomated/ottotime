@@ -14,6 +14,18 @@ Automatic time tracking powered by git.
 
 ## Release Notes
 
+### 1.0.6
+
+- Clean up unused files in the extension bundle.
+
+### 1.0.5
+
+- Update vulnerable npm packages.
+
+### 1.0.4
+
+- When disabling for the workspace, delete `.ottotime` file if it has less than 5 minutes logged.
+
 ### 1.0.3
 
 - Display hours in the bottom left status bar.
