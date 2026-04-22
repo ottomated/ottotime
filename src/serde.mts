@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { type FileHandle, open } from 'fs/promises';
 
 export type Items = Array<{ start: number; duration: number }>;
@@ -9,12 +10,15 @@ const HEADER_LENGTH = HEADER.length;
 export const MAX_DURATION = 999 * 60 + 59;
 const MAX_DURATION_STRING = formatDuration(MAX_DURATION);
 
-export class DataPersister {
-	/** Map of startTime -> byte index */
-	cache = new Map<number, number>();
+export function createPersister(uri: vscode.Uri): DataPersister {
+	if (uri.scheme === 'file') {
+		return new DataPersisterNative(uri);
+	}
+	return new DataPersisterVscode(uri);
+}
 
-	constructor(public path: string) {}
-
+export interface DataPersister {
+	uri: vscode.Uri;
 	/**
 	 * Start a new session by adding a line to the file.
 	 * - The file is created if it doesn't exist.
@@ -23,6 +27,27 @@ export class DataPersister {
 	 * @param startTime The timestamp of the start of the session
 	 * @returns The startTime of the session (may be different if the session was split)
 	 */
+	startSession(startTime: number, duration?: number): Promise<number>;
+	/**
+	 * Update the duration of a session.
+	 * @param startTime The startTime of the session
+	 * @param endTime The endTime of the session
+	 * @returns The startTime of the session (may be different if the session was split)
+	 */
+	updateSession(startTime: number, endTime: number): Promise<number>;
+}
+
+export class DataPersisterNative implements DataPersister {
+	/** Map of startTime -> byte index */
+	cache = new Map<number, number>();
+	uri: vscode.Uri;
+	path: string;
+
+	constructor(uri: vscode.Uri) {
+		this.uri = uri;
+		this.path = uri.fsPath;
+	}
+
 	async startSession(startTime: number, duration = 0): Promise<number> {
 		let file: FileHandle;
 		try {
@@ -61,12 +86,6 @@ export class DataPersister {
 		return startTime;
 	}
 
-	/**
-	 * Update the duration of a session.
-	 * @param startTime The startTime of the session
-	 * @param endTime The endTime of the session
-	 * @returns The startTime of the session (may be different if the session was split)
-	 */
 	async updateSession(startTime: number, endTime: number): Promise<number> {
 		const duration = endTime - startTime;
 		let file: FileHandle;
@@ -140,6 +159,103 @@ export class DataPersister {
 		return -1;
 	}
 }
+
+// Unoptimized implementation for when the native fs is not available
+export class DataPersisterVscode implements DataPersister {
+	uri: vscode.Uri;
+	constructor(uri: vscode.Uri) {
+		this.uri = uri;
+	}
+	async startSession(startTime: number, duration = 0): Promise<number> {
+		let info: vscode.FileStat | undefined;
+
+		const lines: Array<Buffer | Uint8Array> = [];
+
+		try {
+			info = await vscode.workspace.fs.stat(this.uri);
+			if (info.type !== vscode.FileType.File) {
+				throw new Error(`${this.uri} already exists and is not a file.`);
+			}
+		} catch (e) {
+			if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
+				info = undefined;
+			} else {
+				throw e;
+			}
+		}
+		if (info) {
+			lines.push(await vscode.workspace.fs.readFile(this.uri));
+		}
+
+		if (!info || info.size === 0) lines.push(HEADER);
+
+		while (duration > MAX_DURATION) {
+			const line = `${startTime}-${MAX_DURATION_STRING}\n`;
+			lines.push(Buffer.from(line));
+			startTime += MAX_DURATION;
+			duration -= MAX_DURATION;
+		}
+		lines.push(Buffer.from(`${startTime}-${formatDuration(duration)}\n`));
+
+		await vscode.workspace.fs.writeFile(this.uri, Buffer.concat(lines));
+
+		return startTime;
+	}
+	async updateSession(startTime: number, endTime: number): Promise<number> {
+		const duration = endTime - startTime;
+		let file: Uint8Array;
+		try {
+			file = await vscode.workspace.fs.readFile(this.uri);
+		} catch (e) {
+			if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
+				return this.startSession(startTime, duration);
+			}
+			throw e;
+		}
+		const index = await this.#findDurationIndex(file, startTime);
+		if (index === -1) {
+			return this.startSession(startTime, duration);
+		}
+
+		if (duration > MAX_DURATION) {
+			const buffer = Buffer.from(MAX_DURATION_STRING);
+			file.set(buffer, index);
+			await vscode.workspace.fs.writeFile(this.uri, file);
+			return this.updateSession(startTime + MAX_DURATION, endTime);
+		}
+
+		const buffer = Buffer.from(formatDuration(duration));
+		file.set(buffer, index);
+		await vscode.workspace.fs.writeFile(this.uri, file);
+		return startTime;
+	}
+	async #findDurationIndex(buffer: Uint8Array, startTime: number) {
+		const expected = Buffer.from(`${startTime}-`);
+		let linePosition = 0;
+		for (let i = 0; i < buffer.length; i++) {
+			const char = buffer[i];
+			// Scanning until the next newline
+			if (linePosition === -1) {
+				if (char === 0x0a /* \n */) {
+					linePosition = 0;
+				}
+				continue;
+			}
+			// Check if we match
+			const expectedChar = expected[linePosition];
+			if (char !== expectedChar) {
+				linePosition = -1;
+				continue;
+			}
+			linePosition++;
+			if (linePosition === expected.length) {
+				return i + 1;
+			}
+		}
+		return -1;
+	}
+}
+
 export function formatDuration(duration: number) {
 	if (duration === 0) return '  0:00';
 	const seconds = duration % 60;

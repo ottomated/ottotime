@@ -36,8 +36,21 @@ export class OttotimePreview
 	) {}
 
 	async openCustomDocument(uri: vscode.Uri) {
-		const items = read(Buffer.from(await vscode.workspace.fs.readFile(uri)));
-		return new OttotimeCustomDocument(uri, items);
+		const visibleUri = uri;
+		let underlyingUri = vscode.Uri.joinPath(uri, '../.git/.ottotime');
+		let buffer: Uint8Array;
+		try {
+			buffer = await vscode.workspace.fs.readFile(underlyingUri);
+		} catch (e) {
+			if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
+				buffer = await vscode.workspace.fs.readFile(uri);
+				underlyingUri = uri;
+			} else {
+				throw e;
+			}
+		}
+		const items = read(Buffer.from(buffer));
+		return new OttotimeCustomDocument(visibleUri, underlyingUri, items);
 	}
 
 	resolveCustomEditor(
@@ -97,7 +110,7 @@ export class OttotimePreview
 				if (command === 'edit') {
 					vscode.commands.executeCommand(
 						'vscode.openWith',
-						document.uri,
+						document.underlyingUri,
 						'default',
 					);
 					return;
@@ -135,6 +148,7 @@ export class OttotimePreview
 export class OttotimeCustomDocument implements vscode.CustomDocument {
 	watcher?: FSWatcher;
 	uri: vscode.Uri;
+	underlyingUri: vscode.Uri;
 
 	items: Items;
 
@@ -143,15 +157,16 @@ export class OttotimeCustomDocument implements vscode.CustomDocument {
 	private readonly _onChange = new vscode.EventEmitter<{ items: Items }>();
 	readonly onChange = this._onChange.event;
 
-	constructor(uri: vscode.Uri, items: Items) {
-		this.uri = uri;
+	constructor(visibleUri: vscode.Uri, underlyingUri: vscode.Uri, items: Items) {
+		this.uri = visibleUri;
+		this.underlyingUri = underlyingUri;
 		this.items = items;
-		if (uri.scheme !== 'file') return; // Don't watch non-file uris
+		if (this.underlyingUri.scheme !== 'file') return; // Don't watch non-file uris
 		try {
-			this.watcher = watch(uri.fsPath);
+			this.watcher = watch(this.underlyingUri.fsPath);
 			this.watcher.on('change', async () => {
 				this.items = read(
-					Buffer.from(await vscode.workspace.fs.readFile(this.uri)),
+					Buffer.from(await vscode.workspace.fs.readFile(this.underlyingUri)),
 				);
 				this._onChange.fire({ items: this.items });
 			});

@@ -1,19 +1,29 @@
 import { $ } from 'bun';
 import {
-	DataPersister,
+	DataPersisterNative,
+	DataPersisterVscode,
 	HEADER as HEADER_BUF,
 	MAX_DURATION,
 	read,
 } from './serde.mjs';
 import { test, describe, expect } from 'bun:test';
+import type { Uri } from 'vscode';
 
 const MOCK_DATES = [1734570950, 1734571041] as const;
 const HEADER = HEADER_BUF.toString();
 
-describe('DataPersister', () => {
+describe.each(['native', 'vscode'] as const)('DataPersister (%s)', (mode) => {
+	const DataPersister =
+		mode === 'native' ? DataPersisterNative : DataPersisterVscode;
+	function uri(path: string) {
+		return {
+			fsPath: path,
+			scheme: mode === 'native' ? 'file' : 'mock-non-file',
+		} as Uri;
+	}
 	test('from no file, start session', async () => {
 		await $`rm -f /tmp/.ottotime`;
-		const persister = new DataPersister('/tmp/.ottotime');
+		const persister = new DataPersister(uri('/tmp/.ottotime'));
 		await persister.startSession(MOCK_DATES[0]);
 		await persister.startSession(MOCK_DATES[1]);
 
@@ -42,7 +52,7 @@ describe('DataPersister', () => {
 	test('from existing file, start session', async () => {
 		await $`rm -f /tmp/.ottotime3`;
 		await Bun.write('/tmp/.ottotime3', `${HEADER}${MOCK_DATES[0]}- 10:00\n`);
-		const persister = new DataPersister('/tmp/.ottotime3');
+		const persister = new DataPersister(uri('/tmp/.ottotime3'));
 		await persister.startSession(MOCK_DATES[1]);
 
 		await expectFileToBe(
@@ -53,10 +63,11 @@ describe('DataPersister', () => {
 	});
 	test('update session', async () => {
 		await $`rm -f /tmp/.ottotime4`;
-		const persister = new DataPersister('/tmp/.ottotime4');
+		const persister = new DataPersister(uri('/tmp/.ottotime4'));
 		await persister.startSession(MOCK_DATES[0]);
-		expect(persister.cache.get(MOCK_DATES[0])).toBe(HEADER.length);
-
+		if ('cache' in persister) {
+			expect(persister.cache.get(MOCK_DATES[0])).toBe(HEADER.length);
+		}
 		await expectFileToBe(
 			'/tmp/.ottotime4',
 			`${HEADER}${MOCK_DATES[0]}-  0:00\n`,
@@ -82,7 +93,7 @@ describe('DataPersister', () => {
 
 	test('start oversized session', async () => {
 		await $`rm -f /tmp/.ottotime5`;
-		const persister = new DataPersister('/tmp/.ottotime5');
+		const persister = new DataPersister(uri('/tmp/.ottotime5'));
 		const newSession = await persister.startSession(
 			MOCK_DATES[0],
 			MAX_DURATION * 2 + 1,
@@ -96,15 +107,17 @@ describe('DataPersister', () => {
 		);
 		const index = contents.indexOf(newSession.toString());
 
-		expect(persister.cache.get(MOCK_DATES[0])).toBeUndefined();
-		expect(persister.cache.get(newSession)).toBe(index);
+		if ('cache' in persister) {
+			expect(persister.cache.get(MOCK_DATES[0])).toBeUndefined();
+			expect(persister.cache.get(newSession)).toBe(index);
+		}
 
 		await $`rm -f /tmp/.ottotime5`;
 	});
 
 	test('update oversized session', async () => {
 		await $`rm -f /tmp/.ottotime6`;
-		const persister = new DataPersister('/tmp/.ottotime6');
+		const persister = new DataPersister(uri('/tmp/.ottotime6'));
 		await persister.startSession(MOCK_DATES[0]);
 
 		await persister.updateSession(MOCK_DATES[0], MOCK_DATES[0] + MAX_DURATION);
@@ -145,7 +158,7 @@ describe('DataPersister', () => {
 
 	test('file gets deleted before updating', async () => {
 		await $`rm -f /tmp/.ottotime7`;
-		const persister = new DataPersister('/tmp/.ottotime7');
+		const persister = new DataPersister(uri('/tmp/.ottotime7'));
 		await persister.startSession(MOCK_DATES[0]);
 		await persister.startSession(MOCK_DATES[1]);
 
@@ -161,7 +174,7 @@ describe('DataPersister', () => {
 	});
 	test('file gets edited before updating', async () => {
 		await $`rm -f /tmp/.ottotime8`;
-		const persister = new DataPersister('/tmp/.ottotime8');
+		const persister = new DataPersister(uri('/tmp/.ottotime8'));
 		await persister.startSession(MOCK_DATES[0]);
 
 		await Bun.write(
@@ -171,9 +184,11 @@ describe('DataPersister', () => {
 
 		await persister.updateSession(MOCK_DATES[0], MOCK_DATES[0] + 1);
 
-		expect(persister.cache.get(MOCK_DATES[0])).toBe(
-			'# invalid header\n'.length,
-		);
+		if ('cache' in persister) {
+			expect(persister.cache.get(MOCK_DATES[0])).toBe(
+				'# invalid header\n'.length,
+			);
+		}
 
 		await expectFileToBe(
 			'/tmp/.ottotime8',
@@ -188,7 +203,7 @@ describe('DataPersister', () => {
 		$.cwd('/tmp/ottotime-git');
 		await $`git init`;
 
-		const persister = new DataPersister('/tmp/ottotime-git/.ottotime');
+		const persister = new DataPersister(uri('/tmp/ottotime-git/.ottotime'));
 		await persister.startSession(MOCK_DATES[0]);
 		await expectFileToBe(
 			'/tmp/ottotime-git/.ottotime',
