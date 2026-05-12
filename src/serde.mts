@@ -10,15 +10,19 @@ const HEADER_LENGTH = HEADER.length;
 export const MAX_DURATION = 999 * 60 + 59;
 const MAX_DURATION_STRING = formatDuration(MAX_DURATION);
 
-export function createPersister(uri: vscode.Uri): DataPersister {
+export function createPersister(
+	uri: vscode.Uri,
+	isGit: boolean,
+): DataPersister {
 	if (uri.scheme === 'file') {
-		return new DataPersisterNative(uri);
+		return new DataPersisterNative(uri, isGit);
 	}
-	return new DataPersisterVscode(uri);
+	return new DataPersisterVscode(uri, isGit);
 }
 
 export interface DataPersister {
 	uri: vscode.Uri;
+	isGit: boolean;
 	/**
 	 * Start a new session by adding a line to the file.
 	 * - The file is created if it doesn't exist.
@@ -40,11 +44,13 @@ export interface DataPersister {
 export class DataPersisterNative implements DataPersister {
 	/** Map of startTime -> byte index */
 	cache = new Map<number, number>();
+	isGit: boolean;
 	uri: vscode.Uri;
 	path: string;
 
-	constructor(uri: vscode.Uri) {
+	constructor(uri: vscode.Uri, isGit: boolean) {
 		this.uri = uri;
+		this.isGit = isGit;
 		this.path = uri.fsPath;
 	}
 
@@ -54,7 +60,7 @@ export class DataPersisterNative implements DataPersister {
 			file = await open(this.path, 'a');
 		} catch (e) {
 			if (e instanceof Error && 'code' in e && e.code === 'EISDir') {
-				throw new Error(`${this.path} is a directory.`);
+				throw new Error(`${this.path} is a directory.`, { cause: e });
 			}
 			throw e;
 		}
@@ -163,8 +169,10 @@ export class DataPersisterNative implements DataPersister {
 // Unoptimized implementation for when the native fs is not available
 export class DataPersisterVscode implements DataPersister {
 	uri: vscode.Uri;
-	constructor(uri: vscode.Uri) {
+	isGit: boolean;
+	constructor(uri: vscode.Uri, isGit: boolean) {
 		this.uri = uri;
+		this.isGit = isGit;
 	}
 	async startSession(startTime: number, duration = 0): Promise<number> {
 		let info: vscode.FileStat | undefined;
@@ -304,6 +312,14 @@ export function read(data: Buffer) {
 		}
 	}
 	return items;
+}
+
+export function write(items: Items): Buffer {
+	const lines = [HEADER];
+	for (const item of items) {
+		lines.push(Buffer.from(`${item.start}-${formatDuration(item.duration)}\n`));
+	}
+	return Buffer.concat(lines);
 }
 
 function parseLine(

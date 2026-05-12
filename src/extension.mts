@@ -34,21 +34,26 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Delete file if there's not very much time in it
 			const root = $workspaceFolder.get();
 			if (!root) return;
-
-			const uri = vscode.Uri.joinPath(root.uri, '.ottotime');
-			try {
-				const items = read(
-					Buffer.from(await vscode.workspace.fs.readFile(uri)),
-				);
-				let total = 0;
-				for (const item of items) {
-					total += item.duration;
-					if (total > 60 * 5) return;
+			for (const uri of [
+				vscode.Uri.joinPath(root.uri, '.ottotime'),
+				vscode.Uri.joinPath(root.uri, '.git/.ottotime'),
+			]) {
+				try {
+					const items = read(
+						Buffer.from(await vscode.workspace.fs.readFile(uri)),
+					);
+					let total = 0;
+					for (const item of items) {
+						total += item.duration;
+						if (total > 60 * 5) break;
+					}
+					if (total < 60 * 5) {
+						// Less than 5 minutes, delete the file
+						await vscode.workspace.fs.delete(uri);
+					}
+				} catch {
+					/* ignore */
 				}
-				// Less than 5 minutes, delete the file
-				await vscode.workspace.fs.delete(uri);
-			} catch {
-				/* ignore */
 			}
 			await deleteGitConfig(root.uri);
 		}),
@@ -57,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('ottotime.enable', async () => {
 			log('Enabled');
 			$enabled.set(true);
-			await ensureGitConfig($workspaceFolder.get()?.uri);
+			await ensureGitConfig($workspaceFolder.get()?.uri, context);
 		}),
 	);
 	//#endregion
@@ -138,21 +143,36 @@ export async function activate(context: vscode.ExtensionContext) {
 	const $persister = computed(
 		[$workspaceFolder, $gitFolder],
 		(workspaceFolder, gitFolder) => {
-			const previous = $persister.get();
 			if (!workspaceFolder) return null;
 			const uri = gitFolder
 				? vscode.Uri.joinPath(gitFolder, '.ottotime')
 				: vscode.Uri.joinPath(workspaceFolder.uri, '.ottotime');
-			if (previous) {
-				try {
-					vscode.workspace.fs.copy(previous.uri, uri, { overwrite: true });
-				} catch {
-					/* ignore */
-				}
-			}
-			return createPersister(uri);
+			return createPersister(uri, !!gitFolder);
 		},
 	);
+
+	// Copy .ottotime to .git/.ottotime, only if it doesn't exist
+	$persister.subscribe(async (persister, previous) => {
+		if (!persister?.isGit) return;
+
+		let oldUri = previous?.uri;
+		if (!oldUri) {
+			const workspaceFolder = $workspaceFolder.get();
+			if (!workspaceFolder) return;
+			oldUri = vscode.Uri.joinPath(workspaceFolder.uri, '.ottotime');
+		}
+		try {
+			await vscode.workspace.fs.copy(oldUri, persister.uri, {
+				overwrite: false, //TODO: need to merge if newer version from git remote instead of copying
+			});
+		} catch (e) {
+			if (e instanceof vscode.FileSystemError && e.code === 'FileExists') {
+				// Ignore if the file already exists
+				return;
+			}
+			throw e;
+		}
+	});
 
 	//#region $currentSession - The active work session, and logic for saving it to the file
 	const $currentSession = atom<null | { start: number; end: number }>(null);
@@ -229,7 +249,6 @@ export async function activate(context: vscode.ExtensionContext) {
 				console.error(e);
 				showSessionError(String(e));
 			}
-			ensureGitConfig($workspaceFolder.get()?.uri);
 		}
 		$currentSession.notify();
 	}
@@ -278,6 +297,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			previewAll(context, $workspaceFolder.get(), $currentSession),
 		),
 	);
+	ensureGitConfig($workspaceFolder.get()?.uri, context);
 
 	onShutdown = async () => {
 		if (!$enabled.get()) return;

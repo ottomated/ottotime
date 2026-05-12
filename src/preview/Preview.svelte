@@ -18,7 +18,8 @@
 		vscode: { postMessage(msg: string): void };
 	} = $props();
 
-	const workspaces = $state(initial);
+	// svelte-ignore state_referenced_locally
+const workspaces = $state(initial);
 
 	function groupDays(
 		items: Items,

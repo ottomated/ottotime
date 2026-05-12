@@ -54,6 +54,33 @@ async function buildExtension() {
 		external: ['vscode'],
 		logLevel: 'silent',
 	});
+	await build({
+		entryPoints: ['src/precommit.mts'],
+		bundle: true,
+		format: 'cjs',
+		minify: production,
+		sourcemap: !production,
+		sourcesContent: false,
+		platform: 'node',
+		outfile: 'dist/precommit.js',
+		external: ['vscode'],
+		logLevel: 'silent',
+		plugins: [
+			{
+				name: 'remove-vscode',
+				setup(build) {
+					build.onResolve({ filter: /^vscode$/ }, (args) => ({
+						path: args.path,
+						namespace: 'no-op',
+					}));
+					build.onLoad({ filter: /.*/, namespace: 'no-op' }, () => ({
+						contents: 'export default {}',
+						loader: 'js',
+					}));
+				},
+			},
+		],
+	});
 }
 
 async function main() {
