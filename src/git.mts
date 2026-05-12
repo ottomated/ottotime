@@ -17,7 +17,7 @@ export async function getGitFolder(root: vscode.Uri | undefined) {
 }
 
 const GITATTRIBUTES_COMMENT = '# Prevents merge conflicts in Ottotime files';
-const GITATTRIBUTES_CONFIG = '.ottotime merge=union filter=ottotime';
+const GITATTRIBUTES_CONFIG = '.ottotime merge=union';
 
 async function deleteGitAttributes(root: vscode.Uri) {
 	const gitattributes = vscode.Uri.joinPath(root, '.gitattributes');

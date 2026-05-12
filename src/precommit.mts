@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { Items, read, write } from './serde.mjs';
+import { merge, read, write } from './serde.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 
 async function load(path: string) {
@@ -19,16 +19,7 @@ async function main() {
 	const publicFile = await load(publicPath);
 	const gitFile = await load(join(process.cwd(), '.git/.ottotime'));
 
-	const merged: Items = publicFile;
-	for (const item of gitFile) {
-		const existing = merged.find((i) => i.start === item.start);
-		if (existing) {
-			existing.duration = Math.max(existing.duration, item.duration);
-		} else {
-			merged.push(item);
-		}
-	}
-	merged.sort((a, b) => a.start - b.start);
+	const merged = merge(publicFile, gitFile);
 	await writeFile(publicPath, write(merged));
 }
 main();

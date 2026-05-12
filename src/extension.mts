@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { atom, computed } from 'nanostores';
-import { createPersister, read } from './serde.mjs';
+import { createPersister, Items, merge, read, write } from './serde.mjs';
 import { OttotimePreview } from './preview/editor.mjs';
 import { previewAll } from './preview/all.mjs';
 import { deleteGitConfig, ensureGitConfig, getGitFolder } from './git.mjs';
@@ -161,17 +161,24 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (!workspaceFolder) return;
 			oldUri = vscode.Uri.joinPath(workspaceFolder.uri, '.ottotime');
 		}
+		let publicFile: Items = [];
+		let gitFile: Items = [];
 		try {
-			await vscode.workspace.fs.copy(oldUri, persister.uri, {
-				overwrite: false, //TODO: need to merge if newer version from git remote instead of copying
-			});
-		} catch (e) {
-			if (e instanceof vscode.FileSystemError && e.code === 'FileExists') {
-				// Ignore if the file already exists
-				return;
-			}
-			throw e;
+			publicFile = read(
+				Buffer.from(await vscode.workspace.fs.readFile(oldUri)),
+			);
+		} catch {
+			/* ignore */
 		}
+		try {
+			gitFile = read(
+				Buffer.from(await vscode.workspace.fs.readFile(persister.uri)),
+			);
+		} catch {
+			/* ignore */
+		}
+		const merged = merge(gitFile, publicFile);
+		await vscode.workspace.fs.writeFile(persister.uri, write(merged));
 	});
 
 	//#region $currentSession - The active work session, and logic for saving it to the file

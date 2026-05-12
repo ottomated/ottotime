@@ -322,6 +322,20 @@ export function write(items: Items): Buffer {
 	return Buffer.concat(lines);
 }
 
+export function merge(a: Items, b: Items): Items {
+	const merged: Items = structuredClone(a);
+	for (const item of b) {
+		const existing = merged.find((i) => i.start === item.start);
+		if (existing) {
+			existing.duration = Math.max(existing.duration, item.duration);
+		} else {
+			merged.push(item);
+		}
+	}
+	merged.sort((a, b) => a.start - b.start);
+	return merged;
+}
+
 function parseLine(
 	line: string,
 	hyphen: number,
