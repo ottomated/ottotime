@@ -21,9 +21,7 @@ export type Message =
 			i?: number;
 	  };
 
-export class OttotimePreview
-	implements vscode.CustomEditorProvider<OttotimeCustomDocument>
-{
+export class OttotimePreview implements vscode.CustomEditorProvider<OttotimeCustomDocument> {
 	constructor(
 		private context: vscode.ExtensionContext,
 		private $workspaceFolder: PreinitializedWritableAtom<
@@ -41,6 +39,10 @@ export class OttotimePreview
 		let buffer: Uint8Array;
 		try {
 			buffer = await vscode.workspace.fs.readFile(underlyingUri);
+			if (buffer.length === 0) {
+				buffer = await vscode.workspace.fs.readFile(uri);
+				underlyingUri = uri;
+			}
 		} catch (e) {
 			if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
 				buffer = await vscode.workspace.fs.readFile(uri);
