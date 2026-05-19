@@ -34,12 +34,15 @@ export async function previewAll(
 					'.git',
 					'.ottotime',
 				);
-				const visileUri = vscode.Uri.joinPath(workspace.folderUri, '.ottotime');
+				const visibleUri = vscode.Uri.joinPath(
+					workspace.folderUri,
+					'.ottotime',
+				);
 				let contents: Uint8Array;
 				try {
 					contents = await vscode.workspace.fs.readFile(ottotime);
 				} catch {
-					ottotime = visileUri;
+					ottotime = visibleUri;
 					contents = await vscode.workspace.fs.readFile(ottotime);
 				}
 				const items = read(Buffer.from(contents));
@@ -56,7 +59,7 @@ export async function previewAll(
 					name = basename(workspace.folderUri.path);
 				}
 				workspaces.push({
-					doc: new OttotimeCustomDocument(visileUri, ottotime, items),
+					doc: new OttotimeCustomDocument(visibleUri, ottotime, items),
 					name,
 				});
 			} catch (e) {
