@@ -71,7 +71,7 @@ async function ensureGitHook(
 		process.argv[0]!,
 		context.asAbsolutePath('dist/precommit.js'),
 	]);
-	const command = `ELECTRON_RUN_AS_NODE=1 ${quoted} && git add .ottotime`;
+	const command = `ELECTRON_RUN_AS_NODE=1 ${quoted} && git add .ottotime || true`;
 
 	const existing_hook = PRECOMMIT_PATTERN.exec(data)?.[1];
 

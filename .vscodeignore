@@ -17,3 +17,5 @@ pnpm-lock.yaml
 .ottotime
 .github
 LICENSE.txt
+bunfig.toml
+pnpm-workspace.yaml
