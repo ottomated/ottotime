@@ -14,10 +14,13 @@ async function load(path: string) {
 	}
 	return read(data);
 }
+
 async function main() {
+	const gitFile = await load(join(process.cwd(), '.git/.ottotime'));
+	if (gitFile.length === 0) return;
+
 	const publicPath = join(process.cwd(), '.ottotime');
 	const publicFile = await load(publicPath);
-	const gitFile = await load(join(process.cwd(), '.git/.ottotime'));
 
 	const merged = merge(publicFile, gitFile);
 	await writeFile(publicPath, write(merged));

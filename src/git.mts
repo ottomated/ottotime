@@ -1,5 +1,6 @@
 import { chmod } from 'fs/promises';
 import * as vscode from 'vscode';
+import { quote } from 'shell-quote/quote';
 
 export async function getGitFolder(root: vscode.Uri | undefined) {
 	if (!root) return;
@@ -66,12 +67,11 @@ async function ensureGitHook(
 		}
 	}
 
-	const command =
-		'ELECTRON_RUN_AS_NODE=1 ' +
-		process.argv[0] +
-		' ' +
-		vscode.Uri.joinPath(context.extensionUri, 'dist', 'precommit.js').fsPath +
-		' && git add .ottotime';
+	const quoted = quote([
+		process.argv[0]!,
+		context.asAbsolutePath('dist/precommit.js'),
+	]);
+	const command = `ELECTRON_RUN_AS_NODE=1 ${quoted} && git add .ottotime`;
 
 	const existing_hook = PRECOMMIT_PATTERN.exec(data)?.[1];
 
