@@ -306,6 +306,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 	if ($enabled.get()) {
 		ensureGitConfig($workspaceFolder.get()?.uri, context);
+	} else {
+		deleteGitConfig($workspaceFolder.get()?.uri);
 	}
 
 	onShutdown = async () => {
