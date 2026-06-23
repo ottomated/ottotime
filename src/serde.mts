@@ -264,7 +264,7 @@ export class DataPersisterVscode implements DataPersister {
 	}
 }
 
-export function formatDuration(duration: number) {
+function formatDuration(duration: number) {
 	if (duration === 0) return '  0:00';
 	const seconds = duration % 60;
 	const minutes = (duration - seconds) / 60;
