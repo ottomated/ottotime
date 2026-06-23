@@ -29,8 +29,22 @@ export async function previewAll(
 	await Promise.all(
 		recent.map(async (workspace) => {
 			try {
-				const ottotime = vscode.Uri.joinPath(workspace.folderUri, '.ottotime');
-				const contents = await vscode.workspace.fs.readFile(ottotime);
+				let ottotime = vscode.Uri.joinPath(
+					workspace.folderUri,
+					'.git',
+					'.ottotime',
+				);
+				const visibleUri = vscode.Uri.joinPath(
+					workspace.folderUri,
+					'.ottotime',
+				);
+				let contents: Uint8Array;
+				try {
+					contents = await vscode.workspace.fs.readFile(ottotime);
+				} catch {
+					ottotime = visibleUri;
+					contents = await vscode.workspace.fs.readFile(ottotime);
+				}
 				const items = read(Buffer.from(contents));
 
 				let name: string;
@@ -45,12 +59,12 @@ export async function previewAll(
 					name = basename(workspace.folderUri.path);
 				}
 				workspaces.push({
-					doc: new OttotimeCustomDocument(ottotime, items),
+					doc: new OttotimeCustomDocument(visibleUri, ottotime, items),
 					name,
 				});
 			} catch (e) {
 				if (e instanceof vscode.FileSystemError && e.code === 'FileNotFound') {
-					return null;
+					return;
 				}
 				console.error(e);
 			}

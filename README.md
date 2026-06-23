@@ -14,6 +14,11 @@ Automatic time tracking powered by git.
 
 ## Release Notes
 
+### 2.0.0
+
+- Redo git handling: instead of /.ottotime being written every 30 seconds, time is tracked in /.git/.ottotime and a pre-commit hook merges /.git/.ottotime into /.ottotime
+- Fixed gitlens compatibility
+
 ### 1.0.6
 
 - Clean up unused files in the extension bundle.
