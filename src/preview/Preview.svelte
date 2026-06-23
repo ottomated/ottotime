@@ -19,7 +19,7 @@
 	} = $props();
 
 	// svelte-ignore state_referenced_locally
-const workspaces = $state(initial);
+	const workspaces = $state(initial);
 
 	function groupDays(
 		items: Items,
