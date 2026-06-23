@@ -3,10 +3,11 @@
 out/**
 node_modules/**
 src/**
+test/**
 .gitignore
 .prettierrc
 demo.png
-esbuild.ts
+esbuild.mts
 eslint.config.mjs
 pnpm-lock.yaml
 **/tsconfig.json
@@ -17,5 +18,5 @@ pnpm-lock.yaml
 .ottotime
 .github
 LICENSE.txt
-bunfig.toml
+vitest.config.mts
 pnpm-workspace.yaml

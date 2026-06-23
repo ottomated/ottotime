@@ -1,11 +1,12 @@
 import { build } from 'esbuild';
 import { compile } from 'svelte/compiler';
 import { transform } from 'lightningcss';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 
 const production = process.argv.includes('--production');
 
 async function buildSvelte() {
-	const source = await Bun.file('src/preview/Preview.svelte').text();
+	const source = await readFile('src/preview/Preview.svelte', 'utf8');
 	const client = compile(source, {
 		name: 'Preview',
 		filename: 'Preview.svelte',
@@ -15,13 +16,14 @@ async function buildSvelte() {
 	for (const warning of client.warnings) {
 		console.warn(warning.message);
 	}
-	await Bun.write('src/preview/Preview.js', client.js.code);
+	await writeFile('src/preview/Preview.js', client.js.code);
 	const { code: css } = transform({
 		code: Buffer.from(client.css!.code),
 		filename: 'preview.css',
 		minify: production,
 	});
-	await Bun.write('dist/webview.css', css);
+	await mkdir('dist', { recursive: true });
+	await writeFile('dist/webview.css', css);
 	await build({
 		entryPoints: ['src/preview/webview.js'],
 		bundle: true,
