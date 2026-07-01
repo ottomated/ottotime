@@ -1,3 +1,3 @@
 declare module 'shell-quote/quote' {
-	export function quote(args: string[]): string;
+	export default function quote(args: string[]): string;
 }

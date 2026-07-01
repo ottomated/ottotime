@@ -1,6 +1,6 @@
 import { chmod } from 'fs/promises';
 import * as vscode from 'vscode';
-import { quote } from 'shell-quote/quote';
+import quote from 'shell-quote/quote';
 
 export async function getGitFolder(root: vscode.Uri | undefined) {
 	if (!root) return;
