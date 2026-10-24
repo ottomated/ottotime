@@ -3,6 +3,10 @@
 	import type { Items } from '../serde.mjs';
 	import type { Message } from './editor.mjs';
 	import { startOfDay } from 'date-fns/startOfDay';
+	import { startOfMonth } from 'date-fns/startOfMonth';
+	import { endOfMonth } from 'date-fns/endOfMonth';
+	import { subMonths } from 'date-fns/subMonths';
+	import { parseISO } from 'date-fns/parseISO';
 
 	const {
 		initial,
@@ -80,6 +84,46 @@
 			});
 		});
 	}
+
+	// Időszak szűrő
+	let range = $state<'all' | 'thisMonth' | 'lastMonth' | 'custom'>('all');
+	let from = $state('');
+	let to = $state('');
+
+	// A kiválasztott időszak határai (napkezdet timestampek)
+	function getBounds(): [number, number] {
+		const now = new Date();
+		if (range === 'thisMonth') {
+			return [startOfMonth(now).getTime(), endOfMonth(now).getTime()];
+		}
+		if (range === 'lastMonth') {
+			const prev = subMonths(now, 1);
+			return [startOfMonth(prev).getTime(), endOfMonth(prev).getTime()];
+		}
+		if (range === 'custom') {
+			return [
+				from ? startOfDay(parseISO(from)).getTime() : -Infinity,
+				to ? startOfDay(parseISO(to)).getTime() : Infinity,
+			];
+		}
+		return [-Infinity, Infinity];
+	}
+
+	// Napok szűrése az időszakra és összegzés
+	function filterDays(
+		days: Array<[number, number]>,
+		[start, end]: [number, number],
+	) {
+		const result = days.filter(([date]) => date >= start && date <= end);
+		let total = 0;
+		for (const [, duration] of result) total += duration;
+		return { days: result, total };
+	}
+
+	const filtered = $derived.by(() => {
+		const bounds = getBounds();
+		return days.map((d) => filterDays(d.days, bounds));
+	});
 
 	function formatDuration(duration: number) {
 		const hours = Math.floor(duration / 60 / 60);
@@ -200,8 +244,23 @@
 		</div>
 		{#if single}
 			<div class="total">
-				Total: {formatDuration(days[0]!.total)}
+				Total: {formatDuration(filtered[0]!.total)}
 			</div>
+		{/if}
+		<div class="range">
+			<select bind:value={range}>
+				<option value="all">All time</option>
+				<option value="thisMonth">This month</option>
+				<option value="lastMonth">Last month</option>
+				<option value="custom">Custom range</option>
+			</select>
+			{#if range === 'custom'}
+				<input type="date" bind:value={from} max={to || undefined} />
+				<span>–</span>
+				<input type="date" bind:value={to} min={from || undefined} />
+			{/if}
+		</div>
+		{#if single}
 			<button
 				class="edit"
 				onclick={() => {
@@ -218,10 +277,10 @@
 		{/if}
 	</header>
 	{#if single && workspaces[0]}
-		{@render chart(days[0]!.days, 0)}
+		{@render chart(filtered[0]!.days, 0)}
 	{:else}
 		{#each workspaces as workspace, i}
-			{@const d = days[i]!}
+			{@const d = filtered[i]!}
 			<section class="workspace-row">
 				<div class="workspace-row-name">
 					<div>{workspace.workspace}</div>
@@ -246,6 +305,23 @@
 		border-radius: 5px;
 		background: var(--vscode-editor-selectionBackground);
 		align-self: flex-start;
+	}
+	.range {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		margin-left: auto;
+		font-size: 0.85rem;
+	}
+	.range select,
+	.range input {
+		color: var(--vscode-dropdown-foreground);
+		background: var(--vscode-dropdown-background);
+		border: 1px solid var(--vscode-dropdown-border, transparent);
+		border-radius: 3px;
+		padding: 2px 4px;
+		font: inherit;
+		color-scheme: light dark;
 	}
 	.total {
 		margin-left: 1rem;
@@ -307,7 +383,6 @@
 	}
 
 	.edit {
-		margin-left: auto;
 		background: transparent;
 		padding: 2px;
 		border-radius: 5px;
